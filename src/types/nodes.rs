@@ -5,7 +5,6 @@ use std::{collections::HashMap, thread, time::Duration};
 
 pub struct Drone {
     pub id: NodeId,
-    pub connected_drone_ids: Vec<NodeId>,
     pub pdr: f64,
     pub receiver: Receiver<Packet>,
     pub senders: HashMap<NodeId, Sender<Packet>>,
@@ -14,7 +13,6 @@ pub struct Drone {
 pub trait DroneTrait {
     fn new(
         drone_id: NodeId,
-        connected_drone_ids: Vec<NodeId>,
         pdr: f64,
         receiver: Receiver<Packet>,
         senders: HashMap<NodeId, Sender<Packet>>,
@@ -27,7 +25,6 @@ pub trait DroneTrait {
 #[derive(Debug)]
 pub struct Client {
     pub id: NodeId,
-    pub connected_drone_ids: Vec<NodeId>,
     pub receiver: Receiver<Packet>,
     pub senders: HashMap<NodeId, Sender<Packet>>,
 }
@@ -35,7 +32,6 @@ pub struct Client {
 pub trait ClientTrait {
     fn new(
         id: NodeId,
-        connected_drone_ids: Vec<NodeId>,
         receiver: Receiver<Packet>,
         senders: HashMap<NodeId, Sender<Packet>>,
     ) -> Self;
@@ -44,7 +40,6 @@ pub trait ClientTrait {
 
 pub struct Server {
     pub id: NodeId,
-    pub connected_drone_ids: Vec<NodeId>,
     pub receiver: Receiver<Packet>,
     pub senders: HashMap<NodeId, Sender<Packet>>,
 }
@@ -52,7 +47,6 @@ pub struct Server {
 pub trait ServerTrait {
     fn new(
         id: NodeId,
-        connected_drone_ids: Vec<NodeId>,
         receiver: Receiver<Packet>,
         senders: HashMap<NodeId, Sender<Packet>>,
     ) -> Self;
@@ -62,14 +56,12 @@ pub trait ServerTrait {
 impl DroneTrait for Drone {
     fn new(
         drone_id: NodeId,
-        connected_drone_ids: Vec<NodeId>,
         pdr: f64,
         receiver: Receiver<Packet>,
         senders: HashMap<NodeId, Sender<Packet>>,
     ) -> Self {
         Drone {
             id: drone_id,
-            connected_drone_ids,
             pdr,
             receiver,
             senders,
@@ -118,13 +110,11 @@ impl DroneTrait for Drone {
 impl ClientTrait for Client {
     fn new(
         id: NodeId,
-        connected_drone_ids: Vec<NodeId>,
         receiver: Receiver<Packet>,
         senders: HashMap<NodeId, Sender<Packet>>,
     ) -> Self {
         Client {
             id,
-            connected_drone_ids,
             receiver,
             senders,
         }
@@ -165,13 +155,11 @@ impl ClientTrait for Client {
 impl ServerTrait for Server {
     fn new(
         id: NodeId,
-        connected_drone_ids: Vec<NodeId>,
         receiver: Receiver<Packet>,
         senders: HashMap<NodeId, Sender<Packet>>,
     ) -> Self {
         Server {
             id,
-            connected_drone_ids,
             receiver,
             senders,
         }

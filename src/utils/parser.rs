@@ -1,13 +1,13 @@
-use super::super::types::parsed_nodes::{Client, Drone, NodeId, Server};
 use super::errors::ConfigError;
+use crate::types::parsed_nodes::{NodeId, ParsedClient, ParsedDrone, ParsedServer};
 use serde::Deserialize;
 use std::{collections::HashSet, fs};
 
 #[derive(Debug, Deserialize)]
 pub struct Parser {
-    pub drones: Vec<Drone>,
-    pub clients: Vec<Client>,
-    pub servers: Vec<Server>,
+    pub drones: Vec<ParsedDrone>,
+    pub clients: Vec<ParsedClient>,
+    pub servers: Vec<ParsedServer>,
 }
 
 impl Parser {

@@ -85,41 +85,19 @@ impl NetworkInitializer {
         let initialized_drones = Self::initialize_entities(
             &self.parser.drones,
             &channel_map,
-            |drone, senders, receiver| {
-                Drone::new(
-                    drone.id,
-                    drone.connected_drone_ids.clone(),
-                    drone.pdr,
-                    receiver,
-                    senders,
-                )
-            },
+            |drone, senders, receiver| Drone::new(drone.id, drone.pdr, receiver, senders),
         );
 
         let initialized_clients = Self::initialize_entities(
             &self.parser.clients,
             &channel_map,
-            |client, senders, receiver| {
-                Client::new(
-                    client.id,
-                    client.connected_drone_ids.clone(),
-                    receiver,
-                    senders,
-                )
-            },
+            |client, senders, receiver| Client::new(client.id, receiver, senders),
         );
 
         let initialized_servers = Self::initialize_entities(
             &self.parser.servers,
             &channel_map,
-            |server, senders, receiver| {
-                Server::new(
-                    server.id,
-                    server.connected_drone_ids.clone(),
-                    receiver,
-                    senders,
-                )
-            },
+            |server, senders, receiver| Server::new(server.id, receiver, senders),
         );
 
         (initialized_drones, initialized_clients, initialized_servers)
@@ -144,7 +122,9 @@ impl NetworkInitializer {
 
         // Start servers
         for server in servers {
-            server.run();
+            thread::spawn(move || {
+                server.run();
+            });
         }
 
         // Start the simulation

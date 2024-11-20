@@ -2,20 +2,20 @@ use serde::Deserialize;
 pub type NodeId = u64;
 
 #[derive(Debug, Deserialize)]
-pub struct Drone {
+pub struct ParsedDrone {
     pub id: NodeId,
     pub connected_drone_ids: Vec<NodeId>,
     pub pdr: f64,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Client {
+pub struct ParsedClient {
     pub id: NodeId,
     pub connected_drone_ids: Vec<NodeId>,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Server {
+pub struct ParsedServer {
     pub id: NodeId,
     pub connected_drone_ids: Vec<NodeId>,
 }
@@ -25,7 +25,7 @@ pub trait Initializable {
     fn connected_drone_ids(&self) -> &Vec<NodeId>;
 }
 
-impl Initializable for Drone {
+impl Initializable for ParsedDrone {
     fn id(&self) -> &NodeId {
         &self.id
     }
@@ -35,7 +35,7 @@ impl Initializable for Drone {
     }
 }
 
-impl Initializable for Client {
+impl Initializable for ParsedClient {
     fn id(&self) -> &NodeId {
         &self.id
     }
@@ -45,7 +45,7 @@ impl Initializable for Client {
     }
 }
 
-impl Initializable for Server {
+impl Initializable for ParsedServer {
     fn id(&self) -> &NodeId {
         &self.id
     }
