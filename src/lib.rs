@@ -1,114 +1,155 @@
-mod errors;
+mod types;
+mod utils;
 
-use crate::errors::ConfigError;
-use serde::Deserialize;
-use std::{collections::HashSet, fs};
+use crossbeam::channel::{unbounded, Receiver, Sender};
+use std::collections::HashMap;
+use std::fmt::Debug;
+use std::thread;
+use std::time::Duration;
+use types::channel::{Channel, Packet};
+use types::nodes::{Client, ClientTrait, Drone, DroneTrait, Server, ServerTrait};
+use types::parsed_nodes::{Initializable, NodeId};
+use utils::errors::ConfigError;
+use utils::parser::Parser;
 
-pub type NodeId = u64;
-
-#[derive(Debug, Deserialize)]
-pub struct Drone {
-    id: NodeId,
-    connected_drone_ids: Vec<NodeId>,
-    pdr: f64,
+#[derive(Debug)]
+pub struct NetworkInitializer {
+    parser: Parser,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct Client {
-    id: NodeId,
-    connected_drone_ids: Vec<NodeId>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct Server {
-    id: NodeId,
-    connected_drone_ids: Vec<NodeId>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct Config {
-    pub drones: Vec<Drone>,
-    pub clients: Vec<Client>,
-    pub servers: Vec<Server>,
-}
-
-impl Config {
+impl NetworkInitializer {
     /// Create a new configuration
     /// # Errors
-    /// Returns an error if the configuration file cannot be read or the configuration is invalid
+    /// Returns an error if parser encounters an error
     pub fn new(path: Option<&str>) -> Result<Self, ConfigError> {
-        let mut config = Config {
-            drones: Vec::new(),
-            clients: Vec::new(),
-            servers: Vec::new(),
-        };
+        let parser = Parser::new(path)?;
 
-        if let Some(path) = path {
-            config.parse_config_file(path)?;
-        }
-
-        Ok(config)
+        Ok(NetworkInitializer { parser })
     }
 
-    /// Parse the configuration file and update the configuration
-    /// # Errors
-    /// Returns an error if the file cannot be read or the configuration is invalid
-    pub fn parse_config_file(&mut self, path: &str) -> Result<(), ConfigError> {
-        let config_data =
-            fs::read_to_string(path).map_err(|_| ConfigError::FileReadError(path.to_string()))?;
-        let config: Config =
-            toml::from_str(&config_data).map_err(|_| ConfigError::ParseError(path.to_string()))?;
+    fn create_channels(&self) -> HashMap<NodeId, Channel> {
+        let mut channel_map = HashMap::new();
+        for drone in &self.parser.drones {
+            let (tx, rx) = unbounded();
+            let channel = Channel::new(tx, rx);
+            channel_map.insert(drone.id, channel);
+        }
+        for client in &self.parser.clients {
+            let (tx, rx) = unbounded();
+            let channel = Channel::new(tx, rx);
+            channel_map.insert(client.id, channel);
+        }
+        for server in &self.parser.servers {
+            let (tx, rx) = unbounded();
+            let channel = Channel::new(tx, rx);
+            channel_map.insert(server.id, channel);
+        }
 
-        self.drones = config.drones;
-        self.clients = config.clients;
-        self.servers = config.servers;
-
-        self.check_topology()
+        channel_map
     }
 
-    /// Check if the network topology is valid
-    fn check_topology(&self) -> Result<(), ConfigError> {
-        let drone_ids: HashSet<NodeId> = self.drones.iter().map(|d| d.id).collect();
+    fn initialize_entities<T, F, O>(
+        nodes: &[T],
+        channel_map: &HashMap<NodeId, Channel>,
+        create_entity: F,
+    ) -> Vec<O>
+    where
+        T: Initializable,
+        F: Fn(&T, HashMap<NodeId, Sender<Packet>>, Receiver<Packet>) -> O,
+    {
+        nodes
+            .iter()
+            .map(|node| {
+                let mut senders = HashMap::new();
 
-        // check that connections do not contain the drone id nor are duplicated
-        for drone in &self.drones {
-            let mut connection_set = HashSet::new();
-            for connection in &drone.connected_drone_ids {
-                if *connection == drone.id
-                    || !connection_set.insert(connection)
-                    || !drone_ids.contains(connection)
-                {
-                    return Err(ConfigError::InvalidDroneConnection(drone.id, *connection));
+                for neighbor_id in node.connected_drone_ids() {
+                    if let Some(channel) = channel_map.get(neighbor_id) {
+                        senders.insert(*neighbor_id, channel.sender.clone());
+                    }
                 }
-            }
+
+                let receiver = channel_map
+                    .get(node.id())
+                    .expect("Receiver must exist")
+                    .receiver
+                    .clone();
+
+                create_entity(node, senders, receiver)
+            })
+            .collect()
+    }
+
+    fn initialize_network(&self) -> (Vec<Drone>, Vec<Client>, Vec<Server>) {
+        let channel_map = self.create_channels();
+
+        let initialized_drones = Self::initialize_entities(
+            &self.parser.drones,
+            &channel_map,
+            |drone, senders, receiver| {
+                Drone::new(
+                    drone.id,
+                    drone.connected_drone_ids.clone(),
+                    drone.pdr,
+                    receiver,
+                    senders,
+                )
+            },
+        );
+
+        let initialized_clients = Self::initialize_entities(
+            &self.parser.clients,
+            &channel_map,
+            |client, senders, receiver| {
+                Client::new(
+                    client.id,
+                    client.connected_drone_ids.clone(),
+                    receiver,
+                    senders,
+                )
+            },
+        );
+
+        let initialized_servers = Self::initialize_entities(
+            &self.parser.servers,
+            &channel_map,
+            |server, senders, receiver| {
+                Server::new(
+                    server.id,
+                    server.connected_drone_ids.clone(),
+                    receiver,
+                    senders,
+                )
+            },
+        );
+
+        (initialized_drones, initialized_clients, initialized_servers)
+    }
+
+    pub fn run_simulation(&self) {
+        let (drones, clients, servers) = self.initialize_network();
+
+        // Start drones
+        for drone in drones {
+            thread::spawn(move || {
+                drone.run();
+            });
         }
 
-        // check that connections do not contain the client id nor are duplicated
-        for client in &self.clients {
-            let mut connection_set = HashSet::new();
-            for connection in &client.connected_drone_ids {
-                if *connection == client.id
-                    || !connection_set.insert(connection)
-                    || !drone_ids.contains(connection)
-                {
-                    return Err(ConfigError::InvalidClientConnection(client.id, *connection));
-                }
-            }
+        // Start clients
+        for client in clients {
+            thread::spawn(move || {
+                client.run();
+            });
         }
 
-        // check that connections do not contain the server id nor are duplicated
-        for server in &self.servers {
-            let mut connection_set = HashSet::new();
-            for connection in &server.connected_drone_ids {
-                if *connection == server.id
-                    || !connection_set.insert(connection)
-                    || !drone_ids.contains(connection)
-                {
-                    return Err(ConfigError::InvalidServerConnection(server.id, *connection));
-                }
-            }
+        // Start servers
+        for server in servers {
+            server.run();
         }
 
-        Ok(())
+        // Start the simulation
+        loop {
+            thread::sleep(Duration::from_secs(1));
+        }
     }
 }

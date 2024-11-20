@@ -7,3 +7,4 @@ edition = "2021"
 toml = "0.8.19"
 serde = { version = "1.0.214", features = ["derive"] }
 thiserror = "2"
+crossbeam = "0.8.4"

@@ -18,3 +18,9 @@ pub enum ConfigError {
     #[error("Invalid server {0} connection {1}")]
     InvalidServerConnection(NodeId, NodeId),
 }
+
+#[derive(Debug, Error)]
+pub enum ChannelError {
+    #[error("Channel not found for node {0}")]
+    ChannelNotFound(NodeId),
+}
