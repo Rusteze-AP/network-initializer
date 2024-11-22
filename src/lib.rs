@@ -1,3 +1,5 @@
+// use drone::drone::RustezeDrone;
+
 mod types;
 mod utils;
 
@@ -7,7 +9,7 @@ use std::fmt::Debug;
 use std::thread;
 use std::time::Duration;
 use types::channel::{Channel, Packet};
-use types::nodes::{Client, ClientTrait, Drone, DroneTrait, Server, ServerTrait};
+use types::nodes::{Client, Server};
 use types::parsed_nodes::{Initializable, NodeId};
 use utils::errors::ConfigError;
 use utils::parser::Parser;
@@ -79,13 +81,13 @@ impl NetworkInitializer {
             .collect()
     }
 
-    fn initialize_network(&self) -> (Vec<Drone>, Vec<Client>, Vec<Server>) {
+    fn initialize_network(&self) -> (Vec<RustezeDrone>, Vec<Client>, Vec<Server>) {
         let channel_map = self.create_channels();
 
         let initialized_drones = Self::initialize_entities(
             &self.parser.drones,
             &channel_map,
-            |drone, senders, receiver| Drone::new(drone.id, drone.pdr, receiver, senders),
+            |drone, senders, receiver| RustezeDrone::new(drone.id, drone.pdr, receiver, senders),
         );
 
         let initialized_clients = Self::initialize_entities(
