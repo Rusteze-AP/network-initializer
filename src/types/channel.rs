@@ -1,7 +1,7 @@
-// use super::parsed_nodes::NodeId;
-// use crossbeam::channel::{Receiver, Sender};
+use wg_internal::packet::Packet;
+use crossbeam::channel::{Receiver, Sender};
 
-// // False type to make cargo run happy
+// False type to make cargo run happy
 // pub type SourceRoutingHeader = [NodeId; 16];
 
 // #[derive(Debug)]

@@ -1,18 +1,18 @@
-// use drone::drone::RustezeDrone;
-
 mod types;
 mod utils;
 
 use crossbeam::channel::{unbounded, Receiver, Sender};
+use drone::drone::RustezeDrone;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::thread;
 use std::time::Duration;
-use types::channel::{Channel, Packet};
-use types::nodes::{Client, Server};
+use types::channel::Channel;
+use types::nodes::{Client, ClientTrait, Server, ServerTrait};
 use types::parsed_nodes::{Initializable, NodeId};
 use utils::errors::ConfigError;
 use utils::parser::Parser;
+use wg_internal::packet::Packet;
 
 #[derive(Debug)]
 pub struct NetworkInitializer {
