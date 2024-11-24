@@ -2,7 +2,7 @@ mod types;
 mod utils;
 
 use crossbeam::channel::{unbounded, Receiver, Sender};
-use drone::drone::RustezeDrone;
+use rusteze_drone::RustezeDrone;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::thread;
