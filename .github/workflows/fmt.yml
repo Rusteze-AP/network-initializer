@@ -18,9 +18,9 @@ jobs:
     - name: Set up SSH for private repo
       run: |
         # Start the ssh-agent
-        eval "$(ssh-agent -s)" > /dev/null 2>&1
-        # Add the private SSH key directly from the GitHub secret
-        echo "${{ secrets.ACTIONS_SSH_KEY }}" | tr -d '\r' | ssh-add - > /dev/null 2>&1
+        eval "$(ssh-agent -s)"
+        # Add private SSH key
+        ssh-add ~/.ssh/id_rsa
         # Add GitHub to the list of known hosts
         mkdir -p ~/.ssh
         ssh-keyscan github.com >> ~/.ssh/known_hosts
