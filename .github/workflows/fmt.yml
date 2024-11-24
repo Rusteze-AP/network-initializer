@@ -20,8 +20,7 @@ jobs:
         mkdir -p ~/.ssh
         echo "${{ secrets.ACTIONS_SSH_KEY }}" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
-        eval "$(ssh-agent -s)" > /dev/null 2>&1
-        ssh-add ~/.ssh/id_rsa > /dev/null 2>&1
+        ssh-keyscan github.com >> ~/.ssh/known_hosts
     - name: Format
       run: cargo fmt --all --quiet
     - name: Clippy
