@@ -16,12 +16,16 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Set up SSH for private repo
-      run: |
-        mkdir -p ~/.ssh
-        echo "${{ secrets.ACTIONS_SSH_KEY }}" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        eval "$(ssh-agent -s)" > /dev/null 2>&1
-        ssh-add ~/.ssh/id_rsa > /dev/null 2>&1
+        env:
+          ACTIONS_SSH_KEY: ${{ secrets.ACTIONS_SSH_KEY }}
+        run: |
+          # Start the ssh-agent
+          eval "$(ssh-agent -s)" > /dev/null 2>&1
+          # Add the private SSH key stored in GitHub Secrets
+          echo "$ACTIONS_SSH_KEY" | tr -d '\r' | ssh-add - > /dev/null 2>&1
+          # Add GitHub to the list of known hosts
+          mkdir -p ~/.ssh
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
     - name: Format
       run: cargo fmt --all --quiet
     - name: Clippy
