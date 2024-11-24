@@ -24,8 +24,6 @@ jobs:
         eval "$(ssh-agent -s)"
         # Add private SSH key
         ssh-add ~/.ssh/id_rsa
-        # Add GitHub to the list of known hosts
-        ssh-keyscan github.com >> ~/.ssh/known_hosts
     - name: Format
       run: cargo fmt --all --quiet
     - name: Clippy
