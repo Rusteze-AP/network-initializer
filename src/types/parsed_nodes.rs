@@ -1,11 +1,11 @@
 use serde::Deserialize;
-pub type NodeId = u64;
+use wg_internal::network::NodeId;
 
 #[derive(Debug, Deserialize)]
 pub struct ParsedDrone {
     pub id: NodeId,
     pub connected_drone_ids: Vec<NodeId>,
-    pub pdr: f64,
+    pub pdr: f32,
 }
 
 #[derive(Debug, Deserialize)]

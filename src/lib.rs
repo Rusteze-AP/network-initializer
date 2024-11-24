@@ -9,9 +9,11 @@ use std::thread;
 use std::time::Duration;
 use types::channel::Channel;
 use types::nodes::{Client, ClientTrait, Server, ServerTrait};
-use types::parsed_nodes::{Initializable, NodeId};
+use types::parsed_nodes::Initializable;
 use utils::errors::ConfigError;
 use utils::parser::Parser;
+use wg_internal::drone::{Drone, DroneOptions};
+use wg_internal::network::NodeId;
 use wg_internal::packet::Packet;
 
 #[derive(Debug)]
@@ -87,7 +89,16 @@ impl NetworkInitializer {
         let initialized_drones = Self::initialize_entities(
             &self.parser.drones,
             &channel_map,
-            |drone, senders, receiver| RustezeDrone::new(drone.id, drone.pdr, receiver, senders),
+            |drone, senders, receiver| {
+                RustezeDrone::new(DroneOptions {
+                    id: drone.id,
+                    sim_contr_send: unbounded().0,
+                    sim_contr_recv: unbounded().1,
+                    packet_send: senders,
+                    packet_recv: receiver,
+                    pdr: drone.pdr,
+                })
+            },
         );
 
         let initialized_clients = Self::initialize_entities(
@@ -109,7 +120,7 @@ impl NetworkInitializer {
         let (drones, clients, servers) = self.initialize_network();
 
         // Start drones
-        for drone in drones {
+        for mut drone in drones {
             thread::spawn(move || {
                 drone.run();
             });

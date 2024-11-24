@@ -1,7 +1,8 @@
 use super::errors::ConfigError;
-use crate::types::parsed_nodes::{NodeId, ParsedClient, ParsedDrone, ParsedServer};
+use crate::types::parsed_nodes::{ParsedClient, ParsedDrone, ParsedServer};
 use serde::Deserialize;
 use std::{collections::HashSet, fs};
+use wg_internal::network::NodeId;
 
 #[derive(Debug, Deserialize)]
 pub struct Parser {
