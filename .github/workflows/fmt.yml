@@ -20,6 +20,7 @@ jobs:
         mkdir -p ~/.ssh
         echo "${{ secrets.ACTIONS_SSH_KEY }}" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
+        
         # Start the ssh-agent
         eval "$(ssh-agent -s)"
         # Add private SSH key
