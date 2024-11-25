@@ -5,9 +5,9 @@ use wg_internal::packet::Packet;
 
 #[derive(Debug)]
 pub struct Client {
-    pub id: NodeId,
-    pub receiver: Receiver<Packet>,
-    pub senders: HashMap<NodeId, Sender<Packet>>,
+    id: NodeId,
+    receiver: Receiver<Packet>,
+    senders: HashMap<NodeId, Sender<Packet>>,
 }
 
 pub trait ClientTrait {
@@ -16,13 +16,16 @@ pub trait ClientTrait {
         receiver: Receiver<Packet>,
         senders: HashMap<NodeId, Sender<Packet>>,
     ) -> Self;
+
+    fn get_id(&self) -> NodeId;
+
     fn run(&self);
 }
 
 pub struct Server {
-    pub id: NodeId,
-    pub receiver: Receiver<Packet>,
-    pub senders: HashMap<NodeId, Sender<Packet>>,
+    id: NodeId,
+    receiver: Receiver<Packet>,
+    senders: HashMap<NodeId, Sender<Packet>>,
 }
 
 pub trait ServerTrait {
@@ -31,6 +34,9 @@ pub trait ServerTrait {
         receiver: Receiver<Packet>,
         senders: HashMap<NodeId, Sender<Packet>>,
     ) -> Self;
+
+    fn get_id(&self) -> NodeId;
+
     fn run(&self);
 }
 
@@ -45,6 +51,10 @@ impl ClientTrait for Client {
             receiver,
             senders,
         }
+    }
+
+    fn get_id(&self) -> NodeId {
+        self.id
     }
 
     fn run(&self) {
@@ -90,6 +100,10 @@ impl ServerTrait for Server {
             receiver,
             senders,
         }
+    }
+
+    fn get_id(&self) -> NodeId {
+        self.id
     }
 
     fn run(&self) {

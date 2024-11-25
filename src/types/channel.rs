@@ -1,14 +1,13 @@
 use crossbeam::channel::{Receiver, Sender};
-use wg_internal::packet::Packet;
 
 #[derive(Debug)]
-pub struct Channel {
-    pub sender: Sender<Packet>,
-    pub receiver: Receiver<Packet>,
+pub struct Channel<T> {
+    pub sender: Sender<T>,
+    pub receiver: Receiver<T>,
 }
 
-impl Channel {
-    pub fn new(sender: Sender<Packet>, receiver: Receiver<Packet>) -> Self {
+impl<T> Channel<T> {
+    pub fn new(sender: Sender<T>, receiver: Receiver<T>) -> Self {
         Channel { sender, receiver }
     }
 }
