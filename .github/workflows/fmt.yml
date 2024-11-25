@@ -16,7 +16,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
-    - name: Give GitHub Actions access to Rusteze-AP/drone
+    - name: Give gitHub actions access to Rusteze-AP/drone
       uses: webfactory/ssh-agent@v0.5.4
       with:
         ssh-private-key: ${{ secrets.DRONE_PRIVATE_KEY }}
