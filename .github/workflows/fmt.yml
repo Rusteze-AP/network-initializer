@@ -23,6 +23,5 @@ jobs:
         
     - name: Format
       run: cargo fmt --all --quiet
-      
     - name: Clippy
       run: cargo clippy -- -W clippy::pedantic
