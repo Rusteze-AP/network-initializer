@@ -1,5 +1,5 @@
-use wg_internal::network::NodeId;
 use thiserror::Error;
+use wg_internal::network::NodeId;
 
 #[derive(Debug, Error)]
 pub enum ConfigError {
@@ -17,6 +17,9 @@ pub enum ConfigError {
 
     #[error("Invalid server {0} connection {1}")]
     InvalidServerConnection(NodeId, NodeId),
+
+    #[error("Unidirectional connection from {0} to {1}")]
+    UnidirectionalConnection(NodeId, NodeId),
 }
 
 #[derive(Debug, Error)]

@@ -5,12 +5,8 @@ pdr = 0.05
 
 [[drones]]
 id = 2
-connected_drone_ids = [1, 5]
+connected_drone_ids = [1, 5, 6]
 pdr = 0.03
-
-[[clients]]
-id = 4
-connected_drone_ids = [2]
 
 [[clients]]
 id = 5

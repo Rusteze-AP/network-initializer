@@ -1,7 +1,10 @@
 use super::errors::ConfigError;
 use crate::types::parsed_nodes::{ParsedClient, ParsedDrone, ParsedServer};
 use serde::Deserialize;
-use std::{collections::HashSet, fs};
+use std::{
+    collections::{HashMap, HashSet},
+    fs,
+};
 use wg_internal::network::NodeId;
 
 #[derive(Debug, Deserialize)]
@@ -61,6 +64,10 @@ impl Parser {
             self.drones.len() + self.clients.len() + self.servers.len()
         );
 
+        // Convert drones to a lookup map for bidirectional checks
+        let drone_map: HashMap<NodeId, &ParsedDrone> =
+            self.drones.iter().map(|d| (d.id, d)).collect();
+
         // Check that connections do not contain the drone id nor are duplicated
         for drone in &self.drones {
             let mut connection_set = HashSet::new();
@@ -70,6 +77,13 @@ impl Parser {
                     || !all_ids.contains(connection)
                 {
                     return Err(ConfigError::InvalidDroneConnection(drone.id, *connection));
+                }
+
+                // Check bidirectionality
+                if let Some(neighbor) = drone_map.get(&connection) {
+                    if !neighbor.connected_drone_ids.contains(&drone.id) {
+                        return Err(ConfigError::UnidirectionalConnection(drone.id, *connection));
+                    }
                 }
             }
         }
@@ -84,6 +98,16 @@ impl Parser {
                 {
                     return Err(ConfigError::InvalidClientConnection(client.id, *connection));
                 }
+
+                // Check bidirectionality
+                if let Some(neighbor) = drone_map.get(&connection) {
+                    if !neighbor.connected_drone_ids.contains(&client.id) {
+                        return Err(ConfigError::UnidirectionalConnection(
+                            client.id,
+                            *connection,
+                        ));
+                    }
+                }
             }
         }
 
@@ -96,6 +120,16 @@ impl Parser {
                     || !all_ids.contains(connection)
                 {
                     return Err(ConfigError::InvalidServerConnection(server.id, *connection));
+                }
+
+                // Check bidirectionality
+                if let Some(neighbor) = drone_map.get(&connection) {
+                    if !neighbor.connected_drone_ids.contains(&server.id) {
+                        return Err(ConfigError::UnidirectionalConnection(
+                            server.id,
+                            *connection,
+                        ));
+                    }
                 }
             }
         }
