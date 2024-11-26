@@ -1,5 +1,8 @@
 use super::errors::ConfigError;
-use crate::types::parsed_nodes::{ParsedClient, ParsedDrone, ParsedServer};
+use crate::{
+    parsed_nodes::Node,
+    types::parsed_nodes::{ParsedClient, ParsedDrone, ParsedServer},
+};
 use serde::Deserialize;
 use std::{
     collections::{HashMap, HashSet},
@@ -48,91 +51,63 @@ impl Parser {
         self.check_topology()
     }
 
-    /// Check if the network topology is valid
+    fn generic_check_topology<T: Node>(
+        nodes: &[T],
+        all_ids: &HashSet<NodeId>,
+        drone_map: &HashMap<NodeId, &dyn Node>,
+    ) -> Result<(), ConfigError> {
+        // Check that connections do not contain the node id nor are duplicated
+        for node in nodes {
+            let mut connection_set = HashSet::new();
+            for connection in node.connected_drone_ids() {
+                if *connection == node.id()
+                    || !connection_set.insert(connection)
+                    || !all_ids.contains(connection)
+                {
+                    return Err(ConfigError::InvalidNodeConnection(node.id(), *connection));
+                }
+
+                // Check bidirectionality
+                if let Some(neighbor) = drone_map.get(&connection) {
+                    if !neighbor.connected_drone_ids().contains(&node.id()) {
+                        return Err(ConfigError::UnidirectionalConnection(
+                            node.id(),
+                            *connection,
+                        ));
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     fn check_topology(&self) -> Result<(), ConfigError> {
         let all_ids: HashSet<NodeId> = self
             .drones
             .iter()
-            .map(|d| d.id)
-            .chain(self.clients.iter().map(|c| c.id))
-            .chain(self.servers.iter().map(|s| s.id))
+            .map(|d| d.id())
+            .chain(self.clients.iter().map(|c| c.id()))
+            .chain(self.servers.iter().map(|s| s.id()))
             .collect();
 
         // Check that all ids are unique
-        assert_eq!(
-            all_ids.len(),
-            self.drones.len() + self.clients.len() + self.servers.len()
-        );
-
-        // Convert drones to a lookup map for bidirectional checks
-        let drone_map: HashMap<NodeId, &ParsedDrone> =
-            self.drones.iter().map(|d| (d.id, d)).collect();
-
-        // Check that connections do not contain the drone id nor are duplicated
-        for drone in &self.drones {
-            let mut connection_set = HashSet::new();
-            for connection in &drone.connected_drone_ids {
-                if *connection == drone.id
-                    || !connection_set.insert(connection)
-                    || !all_ids.contains(connection)
-                {
-                    return Err(ConfigError::InvalidDroneConnection(drone.id, *connection));
-                }
-
-                // Check bidirectionality
-                if let Some(neighbor) = drone_map.get(&connection) {
-                    if !neighbor.connected_drone_ids.contains(&drone.id) {
-                        return Err(ConfigError::UnidirectionalConnection(drone.id, *connection));
-                    }
-                }
-            }
+        if all_ids.len() != self.drones.len() + self.clients.len() + self.servers.len() {
+            return Err(ConfigError::DuplicatedNodeId);
         }
 
-        // Check that connections do not contain the client id nor are duplicated
-        for client in &self.clients {
-            let mut connection_set = HashSet::new();
-            for connection in &client.connected_drone_ids {
-                if *connection == client.id
-                    || !connection_set.insert(connection)
-                    || !all_ids.contains(connection)
-                {
-                    return Err(ConfigError::InvalidClientConnection(client.id, *connection));
-                }
+        // Convert nodes to a lookup map for bidirectional checks
+        let node_map: HashMap<NodeId, &dyn Node> = self
+            .drones
+            .iter()
+            .map(|d| (d.id(), d as &dyn Node))
+            .chain(self.clients.iter().map(|c| (c.id(), c as &dyn Node)))
+            .chain(self.servers.iter().map(|s| (s.id(), s as &dyn Node)))
+            .collect();
 
-                // Check bidirectionality
-                if let Some(neighbor) = drone_map.get(&connection) {
-                    if !neighbor.connected_drone_ids.contains(&client.id) {
-                        return Err(ConfigError::UnidirectionalConnection(
-                            client.id,
-                            *connection,
-                        ));
-                    }
-                }
-            }
-        }
-
-        // Check that connections do not contain the server id nor are duplicated
-        for server in &self.servers {
-            let mut connection_set = HashSet::new();
-            for connection in &server.connected_drone_ids {
-                if *connection == server.id
-                    || !connection_set.insert(connection)
-                    || !all_ids.contains(connection)
-                {
-                    return Err(ConfigError::InvalidServerConnection(server.id, *connection));
-                }
-
-                // Check bidirectionality
-                if let Some(neighbor) = drone_map.get(&connection) {
-                    if !neighbor.connected_drone_ids.contains(&server.id) {
-                        return Err(ConfigError::UnidirectionalConnection(
-                            server.id,
-                            *connection,
-                        ));
-                    }
-                }
-            }
-        }
+        Parser::generic_check_topology(&self.drones, &all_ids, &node_map)?;
+        Parser::generic_check_topology(&self.clients, &all_ids, &node_map)?;
+        Parser::generic_check_topology(&self.servers, &all_ids, &node_map)?;
 
         Ok(())
     }

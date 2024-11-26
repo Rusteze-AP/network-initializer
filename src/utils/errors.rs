@@ -1,7 +1,7 @@
 use thiserror::Error;
 use wg_internal::network::NodeId;
 
-#[derive(Debug, Error)]
+#[derive(Debug, Error, PartialEq)]
 pub enum ConfigError {
     #[error("Unable to read config file {0}")]
     FileReadError(String),
@@ -9,17 +9,17 @@ pub enum ConfigError {
     #[error("Unable to parse config file {0}")]
     ParseError(String),
 
-    #[error("Invalid drone {0} connection {1}")]
-    InvalidDroneConnection(NodeId, NodeId),
-
-    #[error("Invalid client {0} connection {1}")]
-    InvalidClientConnection(NodeId, NodeId),
-
-    #[error("Invalid server {0} connection {1}")]
-    InvalidServerConnection(NodeId, NodeId),
+    #[error("Invalid node {0} connection {1}")]
+    InvalidNodeConnection(NodeId, NodeId),
 
     #[error("Unidirectional connection from {0} to {1}")]
     UnidirectionalConnection(NodeId, NodeId),
+
+    #[error("Duplicated node id")]
+    DuplicatedNodeId,
+
+    #[error("Empty topology")]
+    EmptyTopology,
 }
 
 #[derive(Debug, Error)]

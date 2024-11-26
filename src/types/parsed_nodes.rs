@@ -54,3 +54,38 @@ impl Initializable for ParsedServer {
         &self.connected_drone_ids
     }
 }
+
+pub trait Node {
+    fn id(&self) -> NodeId;
+    fn connected_drone_ids(&self) -> &Vec<NodeId>;
+}
+
+impl Node for ParsedDrone {
+    fn id(&self) -> NodeId {
+        self.id
+    }
+
+    fn connected_drone_ids(&self) -> &Vec<NodeId> {
+        &self.connected_drone_ids
+    }
+}
+
+impl Node for ParsedClient {
+    fn id(&self) -> NodeId {
+        self.id
+    }
+
+    fn connected_drone_ids(&self) -> &Vec<NodeId> {
+        &self.connected_drone_ids
+    }
+}
+
+impl Node for ParsedServer {
+    fn id(&self) -> NodeId {
+        self.id
+    }
+
+    fn connected_drone_ids(&self) -> &Vec<NodeId> {
+        &self.connected_drone_ids
+    }
+}

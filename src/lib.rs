@@ -4,3 +4,4 @@ mod utils;
 
 pub use network_init::NetworkInitializer;
 pub use types::parsed_nodes;
+pub use utils::errors;
