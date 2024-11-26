@@ -1,4 +1,4 @@
-use crate::NodeId;
+use wg_internal::network::NodeId;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
