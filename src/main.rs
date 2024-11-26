@@ -1,4 +1,4 @@
-use network_initializer::network_init::NetworkInitializer;
+use network_initializer::NetworkInitializer;
 
 fn main() {
     let path = "initialization_files/test.toml";

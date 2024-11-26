@@ -9,6 +9,7 @@ use std::thread::{self, JoinHandle};
 use types::channel::Channel;
 use types::nodes::{Client, ClientTrait, Server, ServerTrait};
 use types::parsed_nodes::Initializable;
+use types::parsed_nodes::{ParsedClient, ParsedDrone, ParsedServer};
 use utils::errors::ConfigError;
 use utils::parser::Parser;
 use wg_internal::controller::{DroneCommand, NodeEvent};
@@ -26,6 +27,21 @@ pub struct NetworkInitializer {
     // channel from drones to controller
     node_event: Channel<NodeEvent>,
     node_handlers: HashMap<NodeId, JoinHandle<()>>,
+}
+
+impl NetworkInitializer {
+    pub fn set_path(&mut self, path: Option<&str>) -> Result<(), ConfigError> {
+        self.parser = Parser::new(path)?;
+        Ok(())
+    }
+
+    pub fn get_nodes(&self) -> (&Vec<ParsedDrone>, &Vec<ParsedClient>, &Vec<ParsedServer>) {
+        (
+            &self.parser.drones,
+            &self.parser.clients,
+            &self.parser.servers,
+        )
+    }
 }
 
 impl NetworkInitializer {
