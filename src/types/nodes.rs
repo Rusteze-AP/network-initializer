@@ -1,11 +1,14 @@
 use crossbeam::channel::{Receiver, Sender, TryRecvError};
 use std::{collections::HashMap, thread, time::Duration};
+use wg_internal::controller::{DroneCommand, NodeEvent};
 use wg_internal::network::NodeId;
 use wg_internal::packet::Packet;
 
 #[derive(Debug)]
 pub struct Client {
     id: NodeId,
+    command_send: Sender<NodeEvent>,
+    command_recv: Receiver<DroneCommand>,
     receiver: Receiver<Packet>,
     senders: HashMap<NodeId, Sender<Packet>>,
 }
@@ -13,6 +16,8 @@ pub struct Client {
 pub trait ClientTrait {
     fn new(
         id: NodeId,
+        command_send: Sender<NodeEvent>,
+        command_recv: Receiver<DroneCommand>,
         receiver: Receiver<Packet>,
         senders: HashMap<NodeId, Sender<Packet>>,
     ) -> Self;
@@ -24,6 +29,8 @@ pub trait ClientTrait {
 
 pub struct Server {
     id: NodeId,
+    command_send: Sender<NodeEvent>,
+    command_recv: Receiver<DroneCommand>,
     receiver: Receiver<Packet>,
     senders: HashMap<NodeId, Sender<Packet>>,
 }
@@ -31,6 +38,8 @@ pub struct Server {
 pub trait ServerTrait {
     fn new(
         id: NodeId,
+        command_send: Sender<NodeEvent>,
+        command_recv: Receiver<DroneCommand>,
         receiver: Receiver<Packet>,
         senders: HashMap<NodeId, Sender<Packet>>,
     ) -> Self;
@@ -43,11 +52,15 @@ pub trait ServerTrait {
 impl ClientTrait for Client {
     fn new(
         id: NodeId,
+        command_send: Sender<NodeEvent>,
+        command_recv: Receiver<DroneCommand>,
         receiver: Receiver<Packet>,
         senders: HashMap<NodeId, Sender<Packet>>,
     ) -> Self {
         Client {
             id,
+            command_send,
+            command_recv,
             receiver,
             senders,
         }
@@ -92,11 +105,15 @@ impl ClientTrait for Client {
 impl ServerTrait for Server {
     fn new(
         id: NodeId,
+        command_send: Sender<NodeEvent>,
+        command_recv: Receiver<DroneCommand>,
         receiver: Receiver<Packet>,
         senders: HashMap<NodeId, Sender<Packet>>,
     ) -> Self {
         Server {
             id,
+            command_send,
+            command_recv,
             receiver,
             senders,
         }

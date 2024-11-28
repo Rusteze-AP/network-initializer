@@ -42,6 +42,21 @@ impl NetworkInitializer {
             &self.parser.servers,
         )
     }
+
+    pub fn get_node_handlers(&self) -> &HashMap<NodeId, JoinHandle<()>> {
+        &self.node_handlers
+    }
+
+    pub fn get_controller_recv(&self) -> Receiver<NodeEvent> {
+        self.node_event.receiver.clone()
+    }
+
+    pub fn get_controller_senders(&self) -> HashMap<NodeId, Sender<DroneCommand>> {
+        self.drone_command_map
+            .iter()
+            .map(|(id, channel)| (*id, channel.sender.clone()))
+            .collect()
+    }
 }
 
 impl NetworkInitializer {
@@ -165,7 +180,7 @@ impl NetworkInitializer {
             &self.drone_command_map,
             &self.node_event,
             |client, command_send, command_recv, senders, receiver| {
-                Client::new(client.id, receiver, senders)
+                Client::new(client.id, command_send, command_recv, receiver, senders)
             },
         );
 
@@ -175,7 +190,7 @@ impl NetworkInitializer {
             &self.drone_command_map,
             &self.node_event,
             |server, command_send, command_recv, senders, receiver| {
-                Server::new(server.id, receiver, senders)
+                Server::new(server.id, command_send, command_recv, receiver, senders)
             },
         );
 
@@ -219,5 +234,9 @@ impl NetworkInitializer {
         for (_, handler) in self.node_handlers.drain() {
             handler.join().unwrap();
         }
+    }
+
+    pub fn stop_simulation(&mut self) {
+        todo!()
     }
 }
