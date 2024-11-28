@@ -1,13 +1,14 @@
 use crate::types;
 use crate::utils;
 
+use client::Client;
 use crossbeam::channel::{unbounded, Receiver, Sender};
 use rusteze_drone::RustezeDrone;
+use server::Server;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::thread::{self, JoinHandle};
 use types::channel::Channel;
-use types::nodes::{Client, ClientTrait, Server, ServerTrait};
 use types::parsed_nodes::Initializable;
 use types::parsed_nodes::{ParsedClient, ParsedDrone, ParsedServer};
 use utils::errors::ConfigError;
