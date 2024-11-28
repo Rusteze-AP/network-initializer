@@ -30,11 +30,15 @@ pub struct NetworkInitializer {
 }
 
 impl NetworkInitializer {
+    /// Set the path of the configuration file
+    /// # Errors
+    /// Returns an error if the parser encounters an error
     pub fn set_path(&mut self, path: Option<&str>) -> Result<(), ConfigError> {
         self.parser = Parser::new(path)?;
         Ok(())
     }
 
+    #[must_use]
     pub fn get_nodes(&self) -> (&Vec<ParsedDrone>, &Vec<ParsedClient>, &Vec<ParsedServer>) {
         (
             &self.parser.drones,
@@ -43,14 +47,17 @@ impl NetworkInitializer {
         )
     }
 
+    #[must_use]
     pub fn get_node_handlers(&self) -> &HashMap<NodeId, JoinHandle<()>> {
         &self.node_handlers
     }
 
+    #[must_use]
     pub fn get_controller_recv(&self) -> Receiver<NodeEvent> {
         self.node_event.receiver.clone()
     }
 
+    #[must_use]
     pub fn get_controller_senders(&self) -> HashMap<NodeId, Sender<DroneCommand>> {
         self.drone_command_map
             .iter()
@@ -232,7 +239,14 @@ impl NetworkInitializer {
 
         // Wait for all threads to finish
         for (_, handler) in self.node_handlers.drain() {
-            handler.join().unwrap();
+            match handler.join() {
+                Ok(()) => {
+                    // Thread executed successfully
+                }
+                Err(err) => {
+                    eprintln!("Thread panicked: {err:?}");
+                }
+            }
         }
     }
 
