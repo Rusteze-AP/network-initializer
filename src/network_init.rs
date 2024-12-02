@@ -245,7 +245,7 @@ impl NetworkInitializer {
                     // Thread executed successfully
                 }
                 Err(err) => {
-                    eprintln!("Thread panicked: {err:?}");
+                    eprintln!("Thread fanicked: {err:?}");
                 }
             }
         }
