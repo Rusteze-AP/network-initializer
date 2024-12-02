@@ -14,7 +14,7 @@ use types::parsed_nodes::{ParsedClient, ParsedDrone, ParsedServer};
 use utils::errors::ConfigError;
 use utils::parser::Parser;
 use wg_internal::controller::{DroneCommand, NodeEvent};
-use wg_internal::drone::{Drone, DroneOptions};
+use wg_internal::drone::Drone;
 use wg_internal::network::NodeId;
 use wg_internal::packet::Packet;
 
@@ -171,14 +171,14 @@ impl NetworkInitializer {
             &self.drone_command_map,
             &self.node_event,
             |drone, command_send, command_recv, senders, receiver| {
-                RustezeDrone::new(DroneOptions {
-                    id: drone.id,
-                    controller_send: command_send,
-                    controller_recv: command_recv,
-                    packet_send: senders,
-                    packet_recv: receiver,
-                    pdr: drone.pdr,
-                })
+                RustezeDrone::new(
+                    drone.id,
+                    command_send,
+                    command_recv,
+                    receiver,
+                    senders,
+                    drone.pdr,
+                )
             },
         );
 
