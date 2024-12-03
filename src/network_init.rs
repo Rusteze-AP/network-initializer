@@ -74,13 +74,16 @@ impl NetworkInitializer {
     pub fn new(path: Option<&str>) -> Result<Self, ConfigError> {
         let parser = Parser::new(path)?;
 
-        Ok(NetworkInitializer {
+        let mut net_init = NetworkInitializer {
             parser,
             channel_map: HashMap::new(),
             drone_command_map: HashMap::new(),
             node_event: Channel::new(unbounded().0, unbounded().1),
             node_handlers: HashMap::new(),
-        })
+        };
+
+        net_init.create_channels();
+        Ok(net_init)
     }
 
     fn create_channels(&mut self) {
@@ -163,8 +166,6 @@ impl NetworkInitializer {
     }
 
     fn initialize_network(&mut self) -> (Vec<RustezeDrone>, Vec<Client>, Vec<Server>) {
-        self.create_channels();
-
         let initialized_drones = Self::initialize_entities(
             &self.parser.drones,
             &self.channel_map,
