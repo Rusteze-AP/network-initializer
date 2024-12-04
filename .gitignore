@@ -18,3 +18,5 @@ Cargo.lock
 #.idea/
 
 .DS_Store
+
+src/main.rs

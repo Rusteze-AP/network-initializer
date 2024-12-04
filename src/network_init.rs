@@ -13,7 +13,7 @@ use types::parsed_nodes::Initializable;
 use types::parsed_nodes::{ParsedClient, ParsedDrone, ParsedServer};
 use utils::errors::ConfigError;
 use utils::parser::Parser;
-use wg_internal::controller::{DroneCommand, NodeEvent};
+use wg_internal::controller::{DroneCommand, DroneEvent};
 use wg_internal::drone::Drone;
 use wg_internal::network::NodeId;
 use wg_internal::packet::Packet;
@@ -26,7 +26,7 @@ pub struct NetworkInitializer {
     // channels from controller to drones
     drone_command_map: HashMap<NodeId, Channel<DroneCommand>>,
     // channel from drones to controller
-    node_event: Channel<NodeEvent>,
+    node_event: Channel<DroneEvent>,
     node_handlers: HashMap<NodeId, JoinHandle<()>>,
 }
 
@@ -54,7 +54,7 @@ impl NetworkInitializer {
     }
 
     #[must_use]
-    pub fn get_controller_recv(&self) -> Receiver<NodeEvent> {
+    pub fn get_controller_recv(&self) -> Receiver<DroneEvent> {
         self.node_event.receiver.clone()
     }
 
@@ -116,7 +116,7 @@ impl NetworkInitializer {
         }
 
         let (tx, rx) = unbounded();
-        let channel: Channel<NodeEvent> = Channel::new(tx, rx);
+        let channel: Channel<DroneEvent> = Channel::new(tx, rx);
         self.node_event = channel;
     }
 
@@ -124,14 +124,14 @@ impl NetworkInitializer {
         nodes: &[T],
         channel_map: &HashMap<NodeId, Channel<Packet>>,
         channel_command_map: &HashMap<NodeId, Channel<DroneCommand>>,
-        node_event: &Channel<NodeEvent>,
+        node_event: &Channel<DroneEvent>,
         create_entity: F,
     ) -> Vec<O>
     where
         T: Initializable,
         F: Fn(
             &T,
-            Sender<NodeEvent>,
+            Sender<DroneEvent>,
             Receiver<DroneCommand>,
             HashMap<NodeId, Sender<Packet>>,
             Receiver<Packet>,
