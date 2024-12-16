@@ -68,7 +68,7 @@ impl Parser {
                 }
 
                 // Check bidirectionality
-                if let Some(neighbor) = drone_map.get(&connection) {
+                if let Some(neighbor) = drone_map.get(connection) {
                     if !neighbor.connected_drone_ids().contains(&node.id()) {
                         return Err(ConfigError::UnidirectionalConnection(
                             node.id(),
@@ -86,9 +86,9 @@ impl Parser {
         let all_ids: HashSet<NodeId> = self
             .drones
             .iter()
-            .map(|d| d.id())
-            .chain(self.clients.iter().map(|c| c.id()))
-            .chain(self.servers.iter().map(|s| s.id()))
+            .map(Node::id)
+            .chain(self.clients.iter().map(Node::id))
+            .chain(self.servers.iter().map(Node::id))
             .collect();
 
         // Check that all ids are unique

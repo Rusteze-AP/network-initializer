@@ -1,19 +1,20 @@
 use crate::types;
 use crate::utils;
 
+use client::Client;
 use crossbeam::channel::{unbounded, Receiver, Sender};
 use rusteze_drone::RustezeDrone;
+use server::Server;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::thread::{self, JoinHandle};
 use types::channel::Channel;
-use types::nodes::{Client, ClientTrait, Server, ServerTrait};
 use types::parsed_nodes::Initializable;
 use types::parsed_nodes::{ParsedClient, ParsedDrone, ParsedServer};
 use utils::errors::ConfigError;
 use utils::parser::Parser;
-use wg_internal::controller::{DroneCommand, NodeEvent};
-use wg_internal::drone::{Drone, DroneOptions};
+use wg_internal::controller::{DroneCommand, DroneEvent};
+use wg_internal::drone::Drone;
 use wg_internal::network::NodeId;
 use wg_internal::packet::Packet;
 
@@ -25,22 +26,44 @@ pub struct NetworkInitializer {
     // channels from controller to drones
     drone_command_map: HashMap<NodeId, Channel<DroneCommand>>,
     // channel from drones to controller
-    node_event: Channel<NodeEvent>,
+    node_event: Channel<DroneEvent>,
     node_handlers: HashMap<NodeId, JoinHandle<()>>,
 }
 
 impl NetworkInitializer {
+    /// Set the path of the configuration file
+    /// # Errors
+    /// Returns an error if the parser encounters an error
     pub fn set_path(&mut self, path: Option<&str>) -> Result<(), ConfigError> {
         self.parser = Parser::new(path)?;
         Ok(())
     }
 
+    #[must_use]
     pub fn get_nodes(&self) -> (&Vec<ParsedDrone>, &Vec<ParsedClient>, &Vec<ParsedServer>) {
         (
             &self.parser.drones,
             &self.parser.clients,
             &self.parser.servers,
         )
+    }
+
+    #[must_use]
+    pub fn get_node_handlers(&self) -> &HashMap<NodeId, JoinHandle<()>> {
+        &self.node_handlers
+    }
+
+    #[must_use]
+    pub fn get_controller_recv(&self) -> Receiver<DroneEvent> {
+        self.node_event.receiver.clone()
+    }
+
+    #[must_use]
+    pub fn get_controller_senders(&self) -> HashMap<NodeId, Sender<DroneCommand>> {
+        self.drone_command_map
+            .iter()
+            .map(|(id, channel)| (*id, channel.sender.clone()))
+            .collect()
     }
 }
 
@@ -51,13 +74,16 @@ impl NetworkInitializer {
     pub fn new(path: Option<&str>) -> Result<Self, ConfigError> {
         let parser = Parser::new(path)?;
 
-        Ok(NetworkInitializer {
+        let mut net_init = NetworkInitializer {
             parser,
             channel_map: HashMap::new(),
             drone_command_map: HashMap::new(),
             node_event: Channel::new(unbounded().0, unbounded().1),
             node_handlers: HashMap::new(),
-        })
+        };
+
+        net_init.create_channels();
+        Ok(net_init)
     }
 
     fn create_channels(&mut self) {
@@ -90,7 +116,7 @@ impl NetworkInitializer {
         }
 
         let (tx, rx) = unbounded();
-        let channel: Channel<NodeEvent> = Channel::new(tx, rx);
+        let channel: Channel<DroneEvent> = Channel::new(tx, rx);
         self.node_event = channel;
     }
 
@@ -98,14 +124,14 @@ impl NetworkInitializer {
         nodes: &[T],
         channel_map: &HashMap<NodeId, Channel<Packet>>,
         channel_command_map: &HashMap<NodeId, Channel<DroneCommand>>,
-        node_event: &Channel<NodeEvent>,
+        node_event: &Channel<DroneEvent>,
         create_entity: F,
     ) -> Vec<O>
     where
         T: Initializable,
         F: Fn(
             &T,
-            Sender<NodeEvent>,
+            Sender<DroneEvent>,
             Receiver<DroneCommand>,
             HashMap<NodeId, Sender<Packet>>,
             Receiver<Packet>,
@@ -140,22 +166,20 @@ impl NetworkInitializer {
     }
 
     fn initialize_network(&mut self) -> (Vec<RustezeDrone>, Vec<Client>, Vec<Server>) {
-        self.create_channels();
-
         let initialized_drones = Self::initialize_entities(
             &self.parser.drones,
             &self.channel_map,
             &self.drone_command_map,
             &self.node_event,
             |drone, command_send, command_recv, senders, receiver| {
-                RustezeDrone::new(DroneOptions {
-                    id: drone.id,
-                    controller_send: command_send,
-                    controller_recv: command_recv,
-                    packet_send: senders,
-                    packet_recv: receiver,
-                    pdr: drone.pdr,
-                })
+                RustezeDrone::new(
+                    drone.id,
+                    command_send,
+                    command_recv,
+                    receiver,
+                    senders,
+                    drone.pdr,
+                )
             },
         );
 
@@ -165,7 +189,7 @@ impl NetworkInitializer {
             &self.drone_command_map,
             &self.node_event,
             |client, command_send, command_recv, senders, receiver| {
-                Client::new(client.id, receiver, senders)
+                Client::new(client.id, command_send, command_recv, receiver, senders)
             },
         );
 
@@ -175,7 +199,7 @@ impl NetworkInitializer {
             &self.drone_command_map,
             &self.node_event,
             |server, command_send, command_recv, senders, receiver| {
-                Server::new(server.id, receiver, senders)
+                Server::new(server.id, command_send, command_recv, receiver, senders)
             },
         );
 
@@ -217,7 +241,18 @@ impl NetworkInitializer {
 
         // Wait for all threads to finish
         for (_, handler) in self.node_handlers.drain() {
-            handler.join().unwrap();
+            match handler.join() {
+                Ok(()) => {
+                    // Thread executed successfully
+                }
+                Err(err) => {
+                    eprintln!("Thread fanicked: {err:?}");
+                }
+            }
         }
+    }
+
+    pub fn stop_simulation(&mut self) {
+        todo!()
     }
 }
