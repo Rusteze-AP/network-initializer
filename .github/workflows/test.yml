@@ -19,7 +19,10 @@ jobs:
     - name: Give GitHub Actions access
       uses: webfactory/ssh-agent@v0.5.4
       with:
-        ssh-private-key: ${{ secrets.DRONE_PRIVATE_KEY }}
+        ssh-private-key: |
+          ${{ secrets.DRONE_PRIVATE_KEY }}
+          ${{ secrets.CLIENT_PRIVATE_KEY }}
+          ${{ secrets.SERVER_PRIVATE_KEY }}
 
     - name: Test
       run: cargo test --verbose --no-fail-fast --color always
