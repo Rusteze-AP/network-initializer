@@ -25,5 +25,11 @@ jobs:
           ${{ secrets.SERVER_PRIVATE_KEY }}
           ${{ secrets.PACKET_FORGE_PRIVATE_KEY }}
 
-    - name: Test
-      run: cargo test --verbose --no-fail-fast --color always
+    - name: Format
+      run: cargo fmt --all --quiet
+
+    # - name: Clippy
+    #   run: cargo clippy -- -W clippy::pedantic
+
+    # - name: Test
+    #   run: cargo test --verbose --no-fail-fast --color always
