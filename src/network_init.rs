@@ -220,7 +220,7 @@ impl NetworkInitializer {
         }
 
         // Start clients
-        for client in clients {
+        for mut client in clients {
             self.node_handlers.insert(
                 client.get_id(),
                 thread::spawn(move || {
@@ -230,7 +230,7 @@ impl NetworkInitializer {
         }
 
         // Start servers
-        for server in servers {
+        for mut server in servers {
             self.node_handlers.insert(
                 server.get_id(),
                 thread::spawn(move || {

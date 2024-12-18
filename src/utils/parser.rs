@@ -83,6 +83,9 @@ impl Parser {
     }
 
     fn check_topology(&self) -> Result<(), ConfigError> {
+        //TODO check servers are connected to at least 2 drones
+        //TODO check clients are connected to at most 2 drones
+
         let all_ids: HashSet<NodeId> = self
             .drones
             .iter()
