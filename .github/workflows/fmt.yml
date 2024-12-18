@@ -22,6 +22,7 @@ jobs:
           ${{ secrets.DRONE_PRIVATE_KEY }}
           ${{ secrets.CLIENT_PRIVATE_KEY }}
           ${{ secrets.SERVER_PRIVATE_KEY }}
+          ${{ secrets.PACKET_FORGE_PRIVATE_KEY }}
 
     - name: Format
       run: cargo fmt --all --quiet
