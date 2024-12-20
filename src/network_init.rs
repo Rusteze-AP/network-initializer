@@ -7,10 +7,12 @@ use rusteze_drone::RustezeDrone;
 use server::Server;
 use std::collections::HashMap;
 use std::fmt::Debug;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::thread::{self, JoinHandle};
+use tokio::runtime::Runtime;
 use types::channel::Channel;
-use types::parsed_nodes::Initializable;
-use types::parsed_nodes::{ParsedClient, ParsedDrone, ParsedServer};
+use types::parsed_nodes::{Initializable, ParsedClient, ParsedDrone, ParsedServer};
 use utils::errors::ConfigError;
 use utils::parser::Parser;
 use wg_internal::controller::{DroneCommand, DroneEvent};
@@ -27,7 +29,6 @@ pub struct NetworkInitializer {
     drone_command_map: HashMap<NodeId, Channel<DroneCommand>>,
     // channel from drones to controller
     node_event: Channel<DroneEvent>,
-    node_handlers: HashMap<NodeId, JoinHandle<()>>,
 }
 
 impl NetworkInitializer {
@@ -46,11 +47,6 @@ impl NetworkInitializer {
             &self.parser.clients,
             &self.parser.servers,
         )
-    }
-
-    #[must_use]
-    pub fn get_node_handlers(&self) -> &HashMap<NodeId, JoinHandle<()>> {
-        &self.node_handlers
     }
 
     #[must_use]
@@ -79,7 +75,6 @@ impl NetworkInitializer {
             channel_map: HashMap::new(),
             drone_command_map: HashMap::new(),
             node_event: Channel::new(unbounded().0, unbounded().1),
-            node_handlers: HashMap::new(),
         };
 
         net_init.create_channels();
@@ -208,10 +203,12 @@ impl NetworkInitializer {
 
     pub fn run_simulation(&mut self) {
         let (drones, clients, servers) = self.initialize_network();
+        // Create a shutdown signal that can be shared across threads
+        let running = Arc::new(AtomicBool::new(true));
+        let mut node_handlers: HashMap<NodeId, JoinHandle<()>> = HashMap::new();
 
-        // Start drones
         for mut drone in drones {
-            self.node_handlers.insert(
+            node_handlers.insert(
                 drone.get_id(),
                 thread::spawn(move || {
                     drone.run();
@@ -219,34 +216,48 @@ impl NetworkInitializer {
             );
         }
 
-        // Start clients
-        for mut client in clients {
-            self.node_handlers.insert(
-                client.get_id(),
+        for client in clients {
+            let client_id = client.get_id();
+            let running = running.clone();
+
+            node_handlers.insert(
+                client_id,
                 thread::spawn(move || {
-                    client.run();
+                    let rt = Runtime::new().expect("Failed to create Tokio runtime");
+                    rt.block_on(async {
+                        if let Err(e) = client.run(running).await {
+                            eprintln!("Error running client {}: {:?}", client_id, e);
+                        }
+                    });
                 }),
             );
         }
 
-        // Start servers
         for mut server in servers {
-            self.node_handlers.insert(
+            let running = running.clone();
+            node_handlers.insert(
                 server.get_id(),
                 thread::spawn(move || {
-                    server.run();
+                    server.run(running);
                 }),
             );
         }
 
-        // Wait for all threads to finish
-        for (_, handler) in self.node_handlers.drain() {
+        // Set up Ctrl+C handler
+        ctrlc::set_handler(move || {
+            println!("Received Ctrl+C, shutting down...");
+            running.clone().store(false, Ordering::SeqCst);
+            std::process::exit(0);
+        })
+        .expect("Error setting Ctrl+C handler");
+
+        for (id, handler) in node_handlers.drain() {
             match handler.join() {
                 Ok(()) => {
-                    // Thread executed successfully
+                    println!("Node {} shut down successfully", id);
                 }
                 Err(err) => {
-                    eprintln!("Thread fanicked: {err:?}");
+                    eprintln!("Thread for node {} panicked: {err:?}", id);
                 }
             }
         }

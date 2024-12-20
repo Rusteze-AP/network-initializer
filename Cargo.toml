@@ -8,9 +8,14 @@ toml = "0.8.19"
 serde = { version = "1.0.215", features = ["derive"] }
 thiserror = "2"
 crossbeam = "0.8.4"
+tokio = { version = "1.10.0", features = ["full"] }
+ctrlc = "3.1.0"
 wg_internal = { git = "https://github.com/WGL-2024/WGL_repo_2024.git", features = [
     "debug",
 ] }
 rusteze_drone = { git = "ssh://git@github.com/Rusteze-AP/drone.git", branch = "main" }
-client = { git = "ssh://git@github.com/Rusteze-AP/client.git", branch = "main" }
-server = { git = "ssh://git@github.com/Rusteze-AP/server.git", branch = "main" }
+# client = { git = "ssh://git@github.com/Rusteze-AP/client.git", branch = "main" }
+# server = { git = "ssh://git@github.com/Rusteze-AP/server.git", branch = "main" }
+
+client = { path = "../client" }
+server = { path = "../server" }
