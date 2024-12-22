@@ -7,8 +7,6 @@ use rusteze_drone::RustezeDrone;
 use server::Server;
 use std::collections::HashMap;
 use std::fmt::Debug;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
 use std::thread::{self, JoinHandle};
 use tokio::runtime::Runtime;
 use types::channel::Channel;
@@ -204,13 +202,13 @@ impl NetworkInitializer {
     pub fn run_simulation(&mut self) {
         let (drones, clients, servers) = self.initialize_network();
         // Create a shutdown signal that can be shared across threads
-        let running = Arc::new(AtomicBool::new(true));
         let mut node_handlers: HashMap<NodeId, JoinHandle<()>> = HashMap::new();
 
         for mut drone in drones {
             node_handlers.insert(
                 drone.get_id(),
                 thread::spawn(move || {
+                    // drone.with_all();
                     drone.run();
                 }),
             );
@@ -218,15 +216,13 @@ impl NetworkInitializer {
 
         for client in clients {
             let client_id = client.get_id();
-            let running = running.clone();
-
             node_handlers.insert(
                 client_id,
                 thread::spawn(move || {
                     let rt = Runtime::new().expect("Failed to create Tokio runtime");
                     rt.block_on(async {
-                        if let Err(e) = client.run(running).await {
-                            eprintln!("Error running client {}: {:?}", client_id, e);
+                        if let Err(e) = client.run().await {
+                            eprintln!("Error running client {client_id}: {e:?}");
                         }
                     });
                 }),
@@ -234,30 +230,35 @@ impl NetworkInitializer {
         }
 
         for mut server in servers {
-            let running = running.clone();
             node_handlers.insert(
                 server.get_id(),
                 thread::spawn(move || {
-                    server.run(running);
+                    server.run();
                 }),
             );
         }
 
         // Set up Ctrl+C handler
+        let _command_senders = self.get_controller_senders();
         ctrlc::set_handler(move || {
             println!("Received Ctrl+C, shutting down...");
-            running.clone().store(false, Ordering::SeqCst);
             std::process::exit(0);
+
+            // Send crash message to all drones
+            // for (id, sender) in &command_senders {
+            //     sender.send(DroneCommand::Crash).unwrap();
+            //     println!("Sent crash command to node {}", id);
+            // }
         })
         .expect("Error setting Ctrl+C handler");
 
         for (id, handler) in node_handlers.drain() {
             match handler.join() {
                 Ok(()) => {
-                    println!("Node {} shut down successfully", id);
+                    println!("Node {id} shut down successfully");
                 }
                 Err(err) => {
-                    eprintln!("Thread for node {} panicked: {err:?}", id);
+                    eprintln!("Thread for node {id} panicked: {err:?}");
                 }
             }
         }
