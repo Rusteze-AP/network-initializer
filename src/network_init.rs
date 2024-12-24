@@ -19,7 +19,17 @@ use wg_internal::network::NodeId;
 use wg_internal::packet::Packet;
 
 #[derive(Debug)]
+enum State {
+    Instantiated,
+    Initialized,
+    Running,
+}
+
+#[derive(Debug)]
 pub struct NetworkInitializer {
+    state: State,
+    steps_done: u8,
+
     parser: Parser,
     // normal communication channels
     channel_map: HashMap<NodeId, Channel<Packet>>,
@@ -47,17 +57,34 @@ impl NetworkInitializer {
         )
     }
 
+    fn switch_state(&mut self) {
+        self.steps_done += 1;
+        if self.steps_done == 3 {
+            self.state = State::Initialized;
+        }
+    }
+
     #[must_use]
-    pub fn get_controller_recv(&self) -> Receiver<DroneEvent> {
+    pub fn get_controller_recv(&mut self) -> Receiver<DroneEvent> {
+        self.switch_state();
         self.node_event.receiver.clone()
     }
 
     #[must_use]
-    pub fn get_controller_senders(&self) -> HashMap<NodeId, Sender<DroneCommand>> {
+    pub fn get_controller_senders(&mut self) -> HashMap<NodeId, Sender<DroneCommand>> {
+        self.switch_state();
         self.drone_command_map
             .iter()
             .map(|(id, channel)| (*id, channel.sender.clone()))
             .collect()
+    }
+
+    /// Get the channels from the network initializer
+    /// # Note
+    /// This function should only be called once, when running the simulation the channels are consumed
+    pub fn get_channels(&mut self) -> HashMap<NodeId, Channel<Packet>> {
+        self.switch_state();
+        self.channel_map.clone()
     }
 }
 
@@ -69,6 +96,8 @@ impl NetworkInitializer {
         let parser = Parser::new(path)?;
 
         let mut net_init = NetworkInitializer {
+            state: State::Instantiated,
+            steps_done: 0,
             parser,
             channel_map: HashMap::new(),
             drone_command_map: HashMap::new(),
@@ -81,36 +110,19 @@ impl NetworkInitializer {
 
     fn create_channels(&mut self) {
         for drone in &self.parser.drones {
-            let (tx, rx) = unbounded();
-            let channel: Channel<Packet> = Channel::new(tx, rx);
-            self.channel_map.insert(drone.id, channel);
-
-            let (tx, rx) = unbounded();
-            let command_channel: Channel<DroneCommand> = Channel::new(tx, rx);
-            self.drone_command_map.insert(drone.id, command_channel);
+            self.channel_map.insert(drone.id, Channel::default());
+            self.drone_command_map.insert(drone.id, Channel::default());
         }
         for client in &self.parser.clients {
-            let (tx, rx) = unbounded();
-            let channel = Channel::new(tx, rx);
-            self.channel_map.insert(client.id, channel);
-
-            let (tx, rx) = unbounded();
-            let command_channel: Channel<DroneCommand> = Channel::new(tx, rx);
-            self.drone_command_map.insert(client.id, command_channel);
+            self.channel_map.insert(client.id, Channel::default());
+            self.drone_command_map.insert(client.id, Channel::default());
         }
         for server in &self.parser.servers {
-            let (tx, rx) = unbounded();
-            let channel = Channel::new(tx, rx);
-            self.channel_map.insert(server.id, channel);
-
-            let (tx, rx) = unbounded();
-            let command_channel: Channel<DroneCommand> = Channel::new(tx, rx);
-            self.drone_command_map.insert(server.id, command_channel);
+            self.channel_map.insert(server.id, Channel::default());
+            self.drone_command_map.insert(server.id, Channel::default());
         }
 
-        let (tx, rx) = unbounded();
-        let channel: Channel<DroneEvent> = Channel::new(tx, rx);
-        self.node_event = channel;
+        self.node_event = Channel::default();
     }
 
     fn initialize_entities<T, F, O>(
@@ -196,12 +208,26 @@ impl NetworkInitializer {
             },
         );
 
+        self.channel_map.clear();
         (initialized_drones, initialized_clients, initialized_servers)
     }
 
-    pub fn run_simulation(&mut self) {
+    /// Run the simulation
+    /// # Errors
+    /// Returns an error if the state is not initialized (`get_channels()`, `get_controller_recv()`, `get_controller_senders()` must be called first)
+    /// # Panics
+    /// Panics if the tokio runtime fails to start
+    pub fn run_simulation(&mut self) -> Result<(), String> {
+        let res: Result<(), String> = match self.state {
+            State::Initialized => {
+                self.state = State::Running;
+                Ok(())
+            }
+            _ => Err("run_simulation() can only be called when initialized".into()),
+        };
+        res.as_ref()?;
+
         let (drones, clients, servers) = self.initialize_network();
-        // Create a shutdown signal that can be shared across threads
         let mut node_handlers: HashMap<NodeId, JoinHandle<()>> = HashMap::new();
 
         for mut drone in drones {
@@ -244,7 +270,7 @@ impl NetworkInitializer {
             println!("Received Ctrl+C, shutting down...");
             std::process::exit(0);
 
-            // Send crash message to all drones
+            // Send crash message to all nodes
             // for (id, sender) in &command_senders {
             //     sender.send(DroneCommand::Crash).unwrap();
             //     println!("Sent crash command to node {}", id);
@@ -262,6 +288,8 @@ impl NetworkInitializer {
                 }
             }
         }
+
+        Ok(())
     }
 
     pub fn stop_simulation(&mut self) {
