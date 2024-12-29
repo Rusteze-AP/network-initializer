@@ -82,6 +82,7 @@ impl NetworkInitializer {
     /// Get the channels from the network initializer
     /// # Note
     /// This function should only be called once, when running the simulation the channels are consumed
+    #[must_use]
     pub fn get_channels(&mut self) -> HashMap<NodeId, Channel<Packet>> {
         self.switch_state();
         self.channel_map.clone()
