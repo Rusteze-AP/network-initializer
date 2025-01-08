@@ -7,6 +7,7 @@ pub struct Channel<T> {
 }
 
 impl<T> Channel<T> {
+    #[must_use]
     pub fn new(sender: Sender<T>, receiver: Receiver<T>) -> Self {
         Channel { sender, receiver }
     }

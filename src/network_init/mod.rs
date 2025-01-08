@@ -1,22 +1,42 @@
+mod getters;
+mod net_utils;
+
+use crate::create_drone_factories;
+use crate::parsed_nodes::ParsedClient;
+use crate::parsed_nodes::ParsedDrone;
+use crate::parsed_nodes::ParsedServer;
 use crate::types;
 use crate::utils;
 
 use client::Client;
 use crossbeam::channel::{unbounded, Receiver, Sender};
-use rusteze_drone::RustezeDrone;
+use net_utils::BoxDrone;
 use server::Server;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::thread::{self, JoinHandle};
 use tokio::runtime::Runtime;
 use types::channel::Channel;
-use types::parsed_nodes::{Initializable, ParsedClient, ParsedDrone, ParsedServer};
+use types::parsed_nodes::Initializable;
 use utils::errors::ConfigError;
 use utils::parser::Parser;
 use wg_internal::controller::{DroneCommand, DroneEvent};
 use wg_internal::drone::Drone;
 use wg_internal::network::NodeId;
 use wg_internal::packet::Packet;
+
+// use rusteze_drone::RustezeDrone;
+
+use rustbusters_drone::RustBustersDrone;
+// use dr_ones::Drone as dr_ones_drone;
+use ap2024_unitn_cppenjoyers_drone::CppEnjoyersDrone;
+use lockheedrustin_drone::LockheedRustin;
+use null_pointer_drone::MyDrone as NullPointerDrone;
+use rust_do_it::RustDoIt;
+use rust_roveri::RustRoveri;
+use rusty_drones::RustyDrone;
+use skylink::SkyLinkDrone;
+use wg_2024_rust::drone::RustDrone;
 
 #[derive(Debug)]
 enum State {
@@ -37,56 +57,6 @@ pub struct NetworkInitializer {
     drone_command_map: HashMap<NodeId, Channel<DroneCommand>>,
     // channel from drones to controller
     node_event: Channel<DroneEvent>,
-}
-
-impl NetworkInitializer {
-    /// Set the path of the configuration file
-    /// # Errors
-    /// Returns an error if the parser encounters an error
-    pub fn set_path(&mut self, path: Option<&str>) -> Result<(), ConfigError> {
-        self.parser = Parser::new(path)?;
-        Ok(())
-    }
-
-    #[must_use]
-    pub fn get_nodes(&self) -> (&Vec<ParsedDrone>, &Vec<ParsedClient>, &Vec<ParsedServer>) {
-        (
-            &self.parser.drones,
-            &self.parser.clients,
-            &self.parser.servers,
-        )
-    }
-
-    fn switch_state(&mut self) {
-        self.steps_done += 1;
-        if self.steps_done == 3 {
-            self.state = State::Initialized;
-        }
-    }
-
-    #[must_use]
-    pub fn get_controller_recv(&mut self) -> Receiver<DroneEvent> {
-        self.switch_state();
-        self.node_event.receiver.clone()
-    }
-
-    #[must_use]
-    pub fn get_controller_senders(&mut self) -> HashMap<NodeId, Sender<DroneCommand>> {
-        self.switch_state();
-        self.drone_command_map
-            .iter()
-            .map(|(id, channel)| (*id, channel.sender.clone()))
-            .collect()
-    }
-
-    /// Get the channels from the network initializer
-    /// # Note
-    /// This function should only be called once, when running the simulation the channels are consumed
-    #[must_use]
-    pub fn get_channels(&mut self) -> HashMap<NodeId, Channel<Packet>> {
-        self.switch_state();
-        self.channel_map.clone()
-    }
 }
 
 impl NetworkInitializer {
@@ -131,7 +101,7 @@ impl NetworkInitializer {
         channel_map: &HashMap<NodeId, Channel<Packet>>,
         channel_command_map: &HashMap<NodeId, Channel<DroneCommand>>,
         node_event: &Channel<DroneEvent>,
-        create_entity: F,
+        create_entity: &[F],
     ) -> Vec<O>
     where
         T: Initializable,
@@ -145,7 +115,8 @@ impl NetworkInitializer {
     {
         nodes
             .iter()
-            .map(|node| {
+            .enumerate()
+            .map(|(index, node)| {
                 let mut senders = HashMap::new();
 
                 for neighbor_id in node.connected_drone_ids() {
@@ -166,27 +137,33 @@ impl NetworkInitializer {
                     .clone();
                 let command_send = node_event.sender.clone();
 
+                // Use the current new method to create the entity
+                let create_entity = &create_entity[index % create_entity.len()];
+
                 create_entity(node, command_send, command_recv, senders, receiver)
             })
             .collect()
     }
 
-    fn initialize_network(&mut self) -> (Vec<RustezeDrone>, Vec<Client>, Vec<Server>) {
+    fn initialize_network(&mut self) -> (Vec<Box<dyn Drone>>, Vec<Client>, Vec<Server>) {
+        let drone_factories: Vec<BoxDrone> = create_drone_factories!(
+            RustBustersDrone,
+            RustDrone,
+            RustRoveri,
+            RustDoIt,
+            LockheedRustin,
+            CppEnjoyersDrone,
+            SkyLinkDrone,
+            RustyDrone,
+            NullPointerDrone
+        );
+
         let initialized_drones = Self::initialize_entities(
             &self.parser.drones,
             &self.channel_map,
             &self.drone_command_map,
             &self.node_event,
-            |drone, command_send, command_recv, senders, receiver| {
-                RustezeDrone::new(
-                    drone.id,
-                    command_send,
-                    command_recv,
-                    receiver,
-                    senders,
-                    drone.pdr,
-                )
-            },
+            &drone_factories,
         );
 
         let initialized_clients = Self::initialize_entities(
@@ -194,9 +171,11 @@ impl NetworkInitializer {
             &self.channel_map,
             &self.drone_command_map,
             &self.node_event,
-            |client, command_send, command_recv, senders, receiver| {
-                Client::new(client.id, command_send, command_recv, receiver, senders)
-            },
+            &[
+                |client: &ParsedClient, command_send, command_recv, senders, receiver| {
+                    Client::new(client.id, command_send, command_recv, receiver, senders)
+                },
+            ],
         );
 
         let initialized_servers = Self::initialize_entities(
@@ -204,9 +183,11 @@ impl NetworkInitializer {
             &self.channel_map,
             &self.drone_command_map,
             &self.node_event,
-            |server, command_send, command_recv, senders, receiver| {
-                Server::new(server.id, command_send, command_recv, receiver, senders)
-            },
+            &[
+                |server: &ParsedServer, command_send, command_recv, senders, receiver| {
+                    Server::new(server.id, command_send, command_recv, receiver, senders)
+                },
+            ],
         );
 
         self.channel_map.clear();
@@ -231,11 +212,10 @@ impl NetworkInitializer {
         let (drones, clients, servers) = self.initialize_network();
         let mut node_handlers: HashMap<NodeId, JoinHandle<()>> = HashMap::new();
 
-        for mut drone in drones {
+        for (i, mut drone) in drones.into_iter().enumerate() {
             node_handlers.insert(
-                drone.get_id(),
+                self.parser.drones[i].id, // Needed because drones do not implement get_id method
                 thread::spawn(move || {
-                    // drone.with_all();
                     drone.run();
                 }),
             );
