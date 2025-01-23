@@ -171,7 +171,10 @@ impl NetworkInitializer {
             .collect()
     }
 
-    fn initialize_network(&mut self) -> (Vec<RustezeDrone>, Vec<Client>, Vec<Server>) {
+    fn initialize_network(
+        &mut self,
+        rt: &Runtime,
+    ) -> (Vec<RustezeDrone>, Vec<Client>, Vec<Server>) {
         let initialized_drones = Self::initialize_entities(
             &self.parser.drones,
             &self.channel_map,
@@ -195,7 +198,13 @@ impl NetworkInitializer {
             &self.drone_command_map,
             &self.node_event,
             |client, command_send, command_recv, senders, receiver| {
-                Client::new(client.id, command_send, command_recv, receiver, senders)
+                rt.block_on(Client::new(
+                    client.id,
+                    command_send,
+                    command_recv,
+                    receiver,
+                    senders,
+                ))
             },
         );
 
@@ -228,7 +237,9 @@ impl NetworkInitializer {
         };
         res.as_ref()?;
 
-        let (drones, clients, servers) = self.initialize_network();
+        let rt = Runtime::new().expect("Failed to create Tokio runtime");
+
+        let (drones, clients, servers) = self.initialize_network(&rt);
         let mut node_handlers: HashMap<NodeId, JoinHandle<()>> = HashMap::new();
 
         for mut drone in drones {
@@ -248,9 +259,8 @@ impl NetworkInitializer {
                 thread::spawn(move || {
                     let rt = Runtime::new().expect("Failed to create Tokio runtime");
                     rt.block_on(async {
-                        if let Err(e) = client.run().await {
-                            eprintln!("Error running client {client_id}: {e:?}");
-                        }
+                        client.with_all();
+                        client.run().await;
                     });
                 }),
             );
