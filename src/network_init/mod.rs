@@ -38,6 +38,19 @@ use rusty_drones::RustyDrone;
 use skylink::SkyLinkDrone;
 use wg_2024_rust::drone::RustDrone;
 
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub enum DroneType {
+    RustBustersDrone,
+    RustDrone,
+    RustRoveri,
+    RustDoIt,
+    LockheedRustin,
+    CppEnjoyersDrone,
+    SkyLinkDrone,
+    RustyDrone,
+    NullPointerDrone,
+}
+
 #[derive(Debug)]
 enum State {
     Instantiated,
@@ -145,8 +158,12 @@ impl NetworkInitializer {
             .collect()
     }
 
-    fn initialize_network(&mut self) -> (Vec<Box<dyn Drone>>, Vec<Client>, Vec<Server>) {
-        let drone_factories: Vec<BoxDrone> = create_drone_factories!(
+    fn initialize_network(
+        &mut self,
+        selected_drones: Option<Vec<DroneType>>, // Use the enum for selecting drones
+    ) -> (Vec<Box<dyn Drone>>, Vec<Client>, Vec<Server>) {
+        // Use the macro to generate factories mapped to DroneType
+        let drone_factories = create_drone_factories!(
             RustBustersDrone,
             RustDrone,
             RustRoveri,
@@ -158,12 +175,26 @@ impl NetworkInitializer {
             NullPointerDrone
         );
 
+        // Filter factories based on the selected drones
+        let filtered_factories: Vec<BoxDrone> = if let Some(selected) = selected_drones {
+            drone_factories
+                .into_iter()
+                .filter(|(drone_type, _)| selected.contains(drone_type))
+                .map(|(_, factory)| factory)
+                .collect()
+        } else {
+            drone_factories
+                .into_iter()
+                .map(|(_, factory)| factory)
+                .collect() // Use all factories if no selection is provided
+        };
+
         let initialized_drones = Self::initialize_entities(
             &self.parser.drones,
             &self.channel_map,
             &self.drone_command_map,
             &self.node_event,
-            &drone_factories,
+            &filtered_factories,
         );
 
         let initialized_clients = Self::initialize_entities(
@@ -195,11 +226,16 @@ impl NetworkInitializer {
     }
 
     /// Run the simulation
-    /// # Errors
+    /// ### Arguments
+    /// - `selected_drones`: Vector of `DroneType`. If `None` uses all drones.
+    /// ### Errors
     /// Returns an error if the state is not initialized (`get_channels()`, `get_controller_recv()`, `get_controller_senders()` must be called first)
-    /// # Panics
+    /// ### Panics
     /// Panics if the tokio runtime fails to start
-    pub fn run_simulation(&mut self) -> Result<(), String> {
+    pub fn run_simulation(
+        &mut self,
+        selected_drones: Option<Vec<DroneType>>,
+    ) -> Result<(), String> {
         let res: Result<(), String> = match self.state {
             State::Initialized => {
                 self.state = State::Running;
@@ -209,7 +245,7 @@ impl NetworkInitializer {
         };
         res.as_ref()?;
 
-        let (drones, clients, servers) = self.initialize_network();
+        let (drones, clients, servers) = self.initialize_network(selected_drones);
         let mut node_handlers: HashMap<NodeId, JoinHandle<()>> = HashMap::new();
 
         for (i, mut drone) in drones.into_iter().enumerate() {

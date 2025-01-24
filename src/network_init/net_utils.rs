@@ -19,22 +19,25 @@ pub(crate) type BoxDrone = Box<
     ) -> Box<dyn Drone>,
 >;
 
-// Macro that creates a vector of `BoxDrone`
+// Macro that creates a vector of `(DroneType, BoxDrone)`
 #[macro_export]
 macro_rules! create_drone_factories {
     ($($drone_type:ident),*) => {
         vec![
             $(
-                Box::new(|parsed_drone: &ParsedDrone, command_send: Sender<DroneEvent>, command_recv: Receiver<DroneCommand>, senders: HashMap<u8, Sender<Packet>>, receiver: Receiver<Packet>| {
-                    Box::new($drone_type::new(
-                        parsed_drone.id,
-                        command_send,
-                        command_recv,
-                        receiver,
-                        senders,
-                        parsed_drone.pdr,
-                    )) as Box<dyn Drone>
-                }) as BoxDrone
+                (
+                    DroneType::$drone_type,
+                    Box::new(|parsed_drone: &ParsedDrone, command_send: Sender<DroneEvent>, command_recv: Receiver<DroneCommand>, senders: HashMap<u8, Sender<Packet>>, receiver: Receiver<Packet>| {
+                        Box::new($drone_type::new(
+                            parsed_drone.id,
+                            command_send,
+                            command_recv,
+                            receiver,
+                            senders,
+                            parsed_drone.pdr,
+                        )) as Box<dyn Drone>
+                    }) as BoxDrone
+                )
             ),*
         ]
     };
