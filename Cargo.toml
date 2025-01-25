@@ -17,7 +17,7 @@ rusteze_drone = { git = "ssh://git@github.com/Rusteze-AP/drone.git", branch = "m
 client = { git = "ssh://git@github.com/Rusteze-AP/client.git", branch = "main" }
 server = { git = "ssh://git@github.com/Rusteze-AP/server.git", branch = "main" }
 
-rustbusters-drone = { git = "ssh://git@github.com/Rustbusters/drone.git"}
+rustbusters-drone = { git = "ssh://git@github.com/Rustbusters/drone.git" }
 # dr_ones = { git = "ssh://git@github.com/Dr-Ones/drone" }
 wg_2024-rust = { git = "ssh://git@github.com/LuigiMiazzo17/unitn-advancedProgramming-WGL_2024-drone.git" }
 rust_do_it = { git = "ssh://git@github.com/RustDoIt/Drone.git" }
@@ -25,5 +25,5 @@ lockheedrustin-drone = { git = "ssh://git@github.com/Lockheed-Rustin/drone.git" 
 ap2024_unitn_cppenjoyers_drone = { git = "ssh://git@github.com/Cpp-enjoyers/drone.git" }
 skylink = { git = "ssh://git@github.com/Suge42/Skylink_drone.git" }
 rusty_drones = { git = "ssh://git@github.com/rusty-drone-2024/rusty-drone", branch = "main" }
-null-pointer-drone = { git = "ssh://git@github.com/The-Null-Pointer-Patrol/null-pointer-drone.git"}
+null-pointer-drone = { git = "ssh://git@github.com/The-Null-Pointer-Patrol/null-pointer-drone.git" }
 rust-roveri = { git = "ssh://git@github.com/RustRoveri/rust-roveri.git" }

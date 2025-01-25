@@ -25,7 +25,7 @@ use wg_internal::drone::Drone;
 use wg_internal::network::NodeId;
 use wg_internal::packet::Packet;
 
-// use rusteze_drone::RustezeDrone;
+use rusteze_drone::RustezeDrone;
 
 use rustbusters_drone::RustBustersDrone;
 // use dr_ones::Drone as dr_ones_drone;
@@ -37,7 +37,9 @@ use rust_roveri::RustRoveri;
 use rusty_drones::RustyDrone;
 use skylink::SkyLinkDrone;
 use wg_2024_rust::drone::RustDrone;
-use rusteze_drone::RustezeDrone;
+
+const POPULATE_DB: bool = false;
+const CLIENT_VIDEO_INIT_DB_PATH: &str = "initialization_files/client_video";
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum DroneType {
@@ -214,6 +216,8 @@ impl NetworkInitializer {
                         command_recv,
                         receiver,
                         senders,
+                        Some(CLIENT_VIDEO_INIT_DB_PATH),
+                        POPULATE_DB,
                     ))
                 },
             ],
