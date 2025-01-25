@@ -37,9 +37,11 @@ use rust_roveri::RustRoveri;
 use rusty_drones::RustyDrone;
 use skylink::SkyLinkDrone;
 use wg_2024_rust::drone::RustDrone;
+use rusteze_drone::RustezeDrone;
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum DroneType {
+    RustezeDrone,
     RustBustersDrone,
     RustDrone,
     RustRoveri,
@@ -161,9 +163,11 @@ impl NetworkInitializer {
     fn initialize_network(
         &mut self,
         selected_drones: Option<Vec<DroneType>>, // Use the enum for selecting drones
+        rt: &Runtime,
     ) -> (Vec<Box<dyn Drone>>, Vec<Client>, Vec<Server>) {
         // Use the macro to generate factories mapped to DroneType
         let drone_factories = create_drone_factories!(
+            RustezeDrone,
             RustBustersDrone,
             RustDrone,
             RustRoveri,
@@ -204,7 +208,13 @@ impl NetworkInitializer {
             &self.node_event,
             &[
                 |client: &ParsedClient, command_send, command_recv, senders, receiver| {
-                    Client::new(client.id, command_send, command_recv, receiver, senders)
+                    rt.block_on(Client::new(
+                        client.id,
+                        command_send,
+                        command_recv,
+                        receiver,
+                        senders,
+                    ))
                 },
             ],
         );
@@ -245,7 +255,9 @@ impl NetworkInitializer {
         };
         res.as_ref()?;
 
-        let (drones, clients, servers) = self.initialize_network(selected_drones);
+        let rt = Runtime::new().expect("Failed to create Tokio runtime");
+
+        let (drones, clients, servers) = self.initialize_network(selected_drones, &rt);
         let mut node_handlers: HashMap<NodeId, JoinHandle<()>> = HashMap::new();
 
         for (i, mut drone) in drones.into_iter().enumerate() {
@@ -264,9 +276,8 @@ impl NetworkInitializer {
                 thread::spawn(move || {
                     let rt = Runtime::new().expect("Failed to create Tokio runtime");
                     rt.block_on(async {
-                        if let Err(e) = client.run().await {
-                            eprintln!("Error running client {client_id}: {e:?}");
-                        }
+                        client.with_all();
+                        client.run().await;
                     });
                 }),
             );
@@ -276,7 +287,7 @@ impl NetworkInitializer {
             node_handlers.insert(
                 server.get_id(),
                 thread::spawn(move || {
-                    server.run();
+                    server.run("intitialization_files/server");
                 }),
             );
         }
