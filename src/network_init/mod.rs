@@ -8,8 +8,8 @@ use crate::parsed_nodes::ParsedServer;
 use crate::types;
 use crate::utils;
 
-use client::Client as ClientVideo;
-use client_audio::Client as ClientAudio;
+// use client::Client as ClientVideo;
+use client_audio::ClientAudio;
 use crossbeam::channel::{unbounded, Receiver, Sender};
 use net_utils::BoxDrone;
 use server::Server;
@@ -25,6 +25,7 @@ use wg_internal::controller::{DroneCommand, DroneEvent};
 use wg_internal::drone::Drone;
 use wg_internal::network::NodeId;
 use wg_internal::packet::Packet;
+use packet_forge::ClientT;
 
 use rusteze_drone::RustezeDrone;
 
@@ -217,6 +218,7 @@ impl NetworkInitializer {
                         command_recv,
                         receiver,
                         senders,
+                        "./initialization_files/client_audio/client-20",
                     )
                 },
             ],
