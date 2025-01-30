@@ -8,15 +8,15 @@ use crate::parsed_nodes::ParsedServer;
 use crate::types;
 use crate::utils;
 
-// use client::Client as ClientVideo;
-use client_audio::ClientAudio;
+use client::Client as ClientVideo;
+// use client_audio::ClientAudio;
 use crossbeam::channel::{unbounded, Receiver, Sender};
 use net_utils::BoxDrone;
+use packet_forge::ClientT;
 use server::Server;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::thread::{self, JoinHandle};
-use tokio::runtime::Runtime;
 use types::channel::Channel;
 use types::parsed_nodes::Initializable;
 use utils::errors::ConfigError;
@@ -25,7 +25,6 @@ use wg_internal::controller::{DroneCommand, DroneEvent};
 use wg_internal::drone::Drone;
 use wg_internal::network::NodeId;
 use wg_internal::packet::Packet;
-use packet_forge::ClientT;
 
 use rusteze_drone::RustezeDrone;
 
@@ -39,9 +38,6 @@ use rust_roveri::RustRoveri;
 use rusty_drones::RustyDrone;
 use skylink::SkyLinkDrone;
 use wg_2024_rust::drone::RustDrone;
-
-const POPULATE_DB: bool = false;
-const CLIENT_VIDEO_INIT_DB_PATH: &str = "initialization_files/client_video";
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum DroneType {
@@ -167,8 +163,7 @@ impl NetworkInitializer {
     fn initialize_network(
         &mut self,
         selected_drones: Option<Vec<DroneType>>, // Use the enum for selecting drones
-        rt: &Runtime,
-    ) -> (Vec<Box<dyn Drone>>, Vec<ClientAudio>, Vec<Server>) {
+    ) -> (Vec<Box<dyn Drone>>, Vec<ClientVideo>, Vec<Server>) {
         // Use the macro to generate factories mapped to DroneType
         let drone_factories = create_drone_factories!(
             RustezeDrone,
@@ -212,13 +207,13 @@ impl NetworkInitializer {
             &self.node_event,
             &[
                 |client: &ParsedClient, command_send, command_recv, senders, receiver| {
-                    ClientAudio::new(
+                    ClientVideo::new(
                         client.id,
                         command_send,
                         command_recv,
                         receiver,
                         senders,
-                        "./initialization_files/client_audio/client-20",
+                        "./initialization_files/client_video/",
                     )
                 },
             ],
@@ -260,9 +255,7 @@ impl NetworkInitializer {
         };
         res.as_ref()?;
 
-        let rt = Runtime::new().expect("Failed to create Tokio runtime");
-
-        let (drones, clients, servers) = self.initialize_network(selected_drones, &rt);
+        let (drones, clients, servers) = self.initialize_network(selected_drones);
         let mut node_handlers: HashMap<NodeId, JoinHandle<()>> = HashMap::new();
 
         for (i, mut drone) in drones.into_iter().enumerate() {
@@ -279,11 +272,12 @@ impl NetworkInitializer {
             node_handlers.insert(
                 client_id,
                 thread::spawn(move || {
-                    let rt = Runtime::new().expect("Failed to create Tokio runtime");
-                    rt.block_on(async {
-                        // client.with_all();
-                        let _res = client.run().await;
-                    });
+                    // let rt = Runtime::new().expect("Failed to create Tokio runtime");
+                    // rt.block_on(async {
+                    //     // client.with_all();
+                    //     let _res = client.run().await;
+                    // });
+                    client.run();
                 }),
             );
         }
