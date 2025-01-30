@@ -8,7 +8,8 @@ use crate::parsed_nodes::ParsedServer;
 use crate::types;
 use crate::utils;
 
-use client::Client;
+use client::Client as ClientVideo;
+use client_audio::Client as ClientAudio;
 use crossbeam::channel::{unbounded, Receiver, Sender};
 use net_utils::BoxDrone;
 use server::Server;
@@ -166,7 +167,7 @@ impl NetworkInitializer {
         &mut self,
         selected_drones: Option<Vec<DroneType>>, // Use the enum for selecting drones
         rt: &Runtime,
-    ) -> (Vec<Box<dyn Drone>>, Vec<Client>, Vec<Server>) {
+    ) -> (Vec<Box<dyn Drone>>, Vec<ClientAudio>, Vec<Server>) {
         // Use the macro to generate factories mapped to DroneType
         let drone_factories = create_drone_factories!(
             RustezeDrone,
@@ -210,15 +211,13 @@ impl NetworkInitializer {
             &self.node_event,
             &[
                 |client: &ParsedClient, command_send, command_recv, senders, receiver| {
-                    rt.block_on(Client::new(
+                    ClientAudio::new(
                         client.id,
                         command_send,
                         command_recv,
                         receiver,
                         senders,
-                        Some(CLIENT_VIDEO_INIT_DB_PATH),
-                        POPULATE_DB,
-                    ))
+                    )
                 },
             ],
         );
@@ -280,8 +279,8 @@ impl NetworkInitializer {
                 thread::spawn(move || {
                     let rt = Runtime::new().expect("Failed to create Tokio runtime");
                     rt.block_on(async {
-                        client.with_all();
-                        client.run().await;
+                        // client.with_all();
+                        let _res = client.run().await;
                     });
                 }),
             );
@@ -291,7 +290,7 @@ impl NetworkInitializer {
             node_handlers.insert(
                 server.get_id(),
                 thread::spawn(move || {
-                    server.run("intitialization_files/server");
+                    server.run("./initialization_files/server");
                 }),
             );
         }
