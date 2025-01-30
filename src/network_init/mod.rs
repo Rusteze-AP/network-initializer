@@ -213,7 +213,6 @@ impl NetworkInitializer {
                         command_recv,
                         receiver,
                         senders,
-                        "./initialization_files/client_video/",
                     )
                 },
             ],
@@ -277,7 +276,7 @@ impl NetworkInitializer {
                     //     // client.with_all();
                     //     let _res = client.run().await;
                     // });
-                    client.run();
+                    client.run("./initialization_files/client_video/");
                 }),
             );
         }
