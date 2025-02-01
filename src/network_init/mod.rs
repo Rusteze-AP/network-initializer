@@ -41,6 +41,9 @@ use rusty_drones::RustyDrone;
 use skylink::SkyLinkDrone;
 use wg_2024_rust::drone::RustDrone;
 
+const CLIENT_AUDIO_CONFIGURATIONS_NUM: usize = 5;
+const SERVER_CONFIGURATIONS_NUM: usize = 5;
+
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum DroneType {
     RustezeDrone,
@@ -286,7 +289,7 @@ impl NetworkInitializer {
             {
                 "./initialization_files/client_video".to_string()
             } else {
-                let client_number = (i % 5) + 1; // Cycle through 1 to 5
+                let client_number = (i % CLIENT_AUDIO_CONFIGURATIONS_NUM) + 1; // Cycle through 1 to 5
                 format!(
                     "./initialization_files/client-audio/client{}",
                     client_number
@@ -302,7 +305,7 @@ impl NetworkInitializer {
         }
 
         for (i, mut server) in servers.into_iter().enumerate() {
-            let server_number = (i % 5) + 1; // Cycles through 1 to 5
+            let server_number = (i % SERVER_CONFIGURATIONS_NUM) + 1; // Cycles through 1 to 5
             let init_file_path = format!("./initialization_files/server/server{}", server_number);
 
             node_handlers.insert(
