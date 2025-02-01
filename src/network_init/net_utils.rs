@@ -1,13 +1,14 @@
 use std::collections::HashMap;
 
 use crossbeam::channel::{Receiver, Sender};
+use packet_forge::ClientT;
 use wg_internal::{
     controller::{DroneCommand, DroneEvent},
     drone::Drone,
     packet::Packet,
 };
 
-use crate::parsed_nodes::ParsedDrone;
+use crate::parsed_nodes::{ParsedClient, ParsedDrone};
 
 pub(crate) type BoxDrone = Box<
     dyn Fn(
@@ -17,6 +18,16 @@ pub(crate) type BoxDrone = Box<
         HashMap<u8, Sender<Packet>>,
         Receiver<Packet>,
     ) -> Box<dyn Drone>,
+>;
+
+pub(crate) type BoxClient = Box<
+    dyn Fn(
+        &ParsedClient,
+        Sender<DroneEvent>,
+        Receiver<DroneCommand>,
+        HashMap<u8, Sender<Packet>>,
+        Receiver<Packet>,
+    ) -> Box<dyn ClientT>,
 >;
 
 // Macro that creates a vector of `(DroneType, BoxDrone)`

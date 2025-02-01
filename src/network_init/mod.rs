@@ -11,6 +11,7 @@ use crate::utils;
 use client::Client as ClientVideo;
 // use client_audio::ClientAudio;
 use crossbeam::channel::{unbounded, Receiver, Sender};
+use net_utils::BoxClient;
 use net_utils::BoxDrone;
 use packet_forge::ClientT;
 use server::Server;
@@ -21,6 +22,7 @@ use types::channel::Channel;
 use types::parsed_nodes::Initializable;
 use utils::errors::ConfigError;
 use utils::parser::Parser;
+use wg_internal::config::Client;
 use wg_internal::controller::{DroneCommand, DroneEvent};
 use wg_internal::drone::Drone;
 use wg_internal::network::NodeId;
@@ -163,7 +165,7 @@ impl NetworkInitializer {
     fn initialize_network(
         &mut self,
         selected_drones: Option<Vec<DroneType>>, // Use the enum for selecting drones
-    ) -> (Vec<Box<dyn Drone>>, Vec<ClientVideo>, Vec<Server>) {
+    ) -> (Vec<Box<dyn Drone>>, Vec<Box<dyn ClientT>>, Vec<Server>) {
         // Use the macro to generate factories mapped to DroneType
         let drone_factories = create_drone_factories!(
             RustezeDrone,
@@ -206,15 +208,21 @@ impl NetworkInitializer {
             &self.drone_command_map,
             &self.node_event,
             &[
-                |client: &ParsedClient, command_send, command_recv, senders, receiver| {
-                    ClientVideo::new(
-                        client.id,
-                        command_send,
-                        command_recv,
-                        receiver,
-                        senders,
-                    )
-                },
+                Box::new(
+                    |client: &ParsedClient,
+                     command_send: Sender<DroneEvent>,
+                     command_recv: Receiver<DroneCommand>,
+                     senders: HashMap<u8, Sender<Packet>>,
+                     receiver: Receiver<Packet>| {
+                        Box::new(ClientVideo::new(
+                            client.id,
+                            command_send,
+                            command_recv,
+                            receiver,
+                            senders,
+                        )) as Box<dyn ClientT>
+                    },
+                ) as BoxClient, // TODO Add ClientAudio when implements correct ClientT
             ],
         );
 
@@ -266,26 +274,41 @@ impl NetworkInitializer {
             );
         }
 
-        for client in clients {
+        for (i, client) in clients.into_iter().enumerate() {
             let client_id = client.get_id();
+
+            // Determine the path based on the client type
+            let init_file_path = if client
+                .as_ref()
+                .as_any()
+                .downcast_ref::<ClientVideo>()
+                .is_some()
+            {
+                "./initialization_files/client_video".to_string()
+            } else {
+                let client_number = (i % 5) + 1; // Cycle through 1 to 5
+                format!(
+                    "./initialization_files/client-audio/client{}",
+                    client_number
+                )
+            };
+
             node_handlers.insert(
                 client_id,
                 thread::spawn(move || {
-                    // let rt = Runtime::new().expect("Failed to create Tokio runtime");
-                    // rt.block_on(async {
-                    //     // client.with_all();
-                    //     let _res = client.run().await;
-                    // });
-                    client.run("./initialization_files/client_video/");
+                    client.run(&init_file_path);
                 }),
             );
         }
 
-        for mut server in servers {
+        for (i, mut server) in servers.into_iter().enumerate() {
+            let server_number = (i % 5) + 1; // Cycles through 1 to 5
+            let init_file_path = format!("./initialization_files/server/server{}", server_number);
+
             node_handlers.insert(
                 server.get_id(),
                 thread::spawn(move || {
-                    server.run("./initialization_files/server");
+                    server.run(&init_file_path);
                 }),
             );
         }
