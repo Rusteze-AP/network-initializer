@@ -22,7 +22,6 @@ use types::channel::Channel;
 use types::parsed_nodes::Initializable;
 use utils::errors::ConfigError;
 use utils::parser::Parser;
-use wg_internal::config::Client;
 use wg_internal::controller::{DroneCommand, DroneEvent};
 use wg_internal::drone::Drone;
 use wg_internal::network::NodeId;
@@ -291,7 +290,7 @@ impl NetworkInitializer {
             } else {
                 let client_number = (i % CLIENT_AUDIO_CONFIGURATIONS_NUM) + 1; // Cycle through 1 to 5
                 format!(
-                    "./initialization_files/client-audio/client{}",
+                    "./initialization_files/client_audio/client{}",
                     client_number
                 )
             };
