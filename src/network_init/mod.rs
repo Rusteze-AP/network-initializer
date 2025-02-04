@@ -9,11 +9,12 @@ use crate::types;
 use crate::utils;
 
 use client::Client as ClientVideo;
-// use client_audio::ClientAudio;
+use client_audio::ClientAudio;
 use crossbeam::channel::{unbounded, Receiver, Sender};
 use net_utils::BoxClient;
 use net_utils::BoxDrone;
 use packet_forge::ClientT;
+use packet_forge::ClientType;
 use server::Server;
 use std::collections::HashMap;
 use std::fmt::Debug;
@@ -40,8 +41,8 @@ use rusty_drones::RustyDrone;
 use skylink::SkyLinkDrone;
 use wg_2024_rust::drone::RustDrone;
 
-const CLIENT_AUDIO_CONFIGURATIONS_NUM: usize = 5;
-const SERVER_CONFIGURATIONS_NUM: usize = 5;
+const CLIENT_AUDIO_CONFIGURATIONS_NUM: usize = 1;
+const SERVER_CONFIGURATIONS_NUM: usize = 1;
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum DroneType {
@@ -164,12 +165,37 @@ impl NetworkInitializer {
             .collect()
     }
 
+    fn filter_nodes<T: PartialEq, G>(
+        selected_nodes: Option<Vec<T>>,
+        node_factories: Vec<(T, G)>,
+    ) -> Vec<G> {
+        // Filter factories based on the selected drones
+        let factories = if let Some(selected) = selected_nodes {
+            node_factories
+                .into_iter()
+                .filter(|(drone_type, _)| selected.contains(drone_type))
+                .map(|(_, factory)| factory)
+                .collect()
+        } else {
+            node_factories
+                .into_iter()
+                .map(|(_, factory)| factory)
+                .collect() // Use all factories if no selection is provided
+        };
+        return factories;
+    }
+
+    /// Returns all the instances of the needed nodes
+    /// ### Arguments
+    /// - `selected_drones`: if None uses all drones otherwise uses only the selected ones
+    /// - `selected_clients`: if None uses all clients otherwise uses only the selected ones
     fn initialize_network(
         &mut self,
-        selected_drones: Option<Vec<DroneType>>, // Use the enum for selecting drones
+        selected_drones: Option<Vec<DroneType>>,
+        selected_clients: Option<Vec<ClientType>>,
     ) -> (Vec<Box<dyn Drone>>, Vec<Box<dyn ClientT>>, Vec<Server>) {
         // Use the macro to generate factories mapped to DroneType
-        let drone_factories = create_drone_factories!(
+        let drone_factories: Vec<(DroneType, BoxDrone)> = create_drone_factories!(
             RustezeDrone,
             RustBustersDrone,
             RustDrone,
@@ -182,34 +208,27 @@ impl NetworkInitializer {
             NullPointerDrone
         );
 
-        // Filter factories based on the selected drones
-        let filtered_factories: Vec<BoxDrone> = if let Some(selected) = selected_drones {
-            drone_factories
-                .into_iter()
-                .filter(|(drone_type, _)| selected.contains(drone_type))
-                .map(|(_, factory)| factory)
-                .collect()
-        } else {
-            drone_factories
-                .into_iter()
-                .map(|(_, factory)| factory)
-                .collect() // Use all factories if no selection is provided
-        };
-
-        let initialized_drones = Self::initialize_entities(
-            &self.parser.drones,
-            &self.channel_map,
-            &self.drone_command_map,
-            &self.node_event,
-            &filtered_factories,
-        );
-
-        let initialized_clients = Self::initialize_entities(
-            &self.parser.clients,
-            &self.channel_map,
-            &self.drone_command_map,
-            &self.node_event,
-            &[
+        let client_factories: Vec<(ClientType, BoxClient)> = vec![
+            (
+                ClientType::Song,
+                Box::new(
+                    |client: &ParsedClient,
+                     command_send: Sender<DroneEvent>,
+                     command_recv: Receiver<DroneCommand>,
+                     senders: HashMap<u8, Sender<Packet>>,
+                     receiver: Receiver<Packet>| {
+                        Box::new(ClientAudio::new(
+                            client.id,
+                            command_send,
+                            command_recv,
+                            receiver,
+                            senders,
+                        )) as Box<dyn ClientT>
+                    },
+                ) as BoxClient,
+            ), // TODO Add ClientAudio when implements correct ClientT
+            (
+                ClientType::Video,
                 Box::new(
                     |client: &ParsedClient,
                      command_send: Sender<DroneEvent>,
@@ -224,8 +243,53 @@ impl NetworkInitializer {
                             senders,
                         )) as Box<dyn ClientT>
                     },
-                ) as BoxClient, // TODO Add ClientAudio when implements correct ClientT
-            ],
+                ) as BoxClient,
+            ),
+        ];
+
+        // Filter factories based on the selected drones
+        let filtered_drones = Self::filter_nodes(selected_drones, drone_factories);
+        let filtered_clients = Self::filter_nodes(selected_clients, client_factories);
+        // let filtered_drones: Vec<BoxDrone> = if let Some(selected) = selected_drones {
+        //     drone_factories
+        //         .into_iter()
+        //         .filter(|(drone_type, _)| selected.contains(drone_type))
+        //         .map(|(_, factory)| factory)
+        //         .collect()
+        // } else {
+        //     drone_factories
+        //         .into_iter()
+        //         .map(|(_, factory)| factory)
+        //         .collect() // Use all factories if no selection is provided
+        // };
+
+        // let filtered_clients: Vec<BoxClient> = if let Some(selected) = selected_clients {
+        //     client_factories
+        //         .into_iter()
+        //         .filter(|(drone_type, _)| selected.contains(drone_type))
+        //         .map(|(_, factory)| factory)
+        //         .collect()
+        // } else {
+        //     client_factories
+        //         .into_iter()
+        //         .map(|(_, factory)| factory)
+        //         .collect() // Use all factories if no selection is provided
+        // };
+
+        let initialized_drones = Self::initialize_entities(
+            &self.parser.drones,
+            &self.channel_map,
+            &self.drone_command_map,
+            &self.node_event,
+            &filtered_drones,
+        );
+
+        let initialized_clients = Self::initialize_entities(
+            &self.parser.clients,
+            &self.channel_map,
+            &self.drone_command_map,
+            &self.node_event,
+            &filtered_clients,
         );
 
         let initialized_servers = Self::initialize_entities(
@@ -254,6 +318,7 @@ impl NetworkInitializer {
     pub fn run_simulation(
         &mut self,
         selected_drones: Option<Vec<DroneType>>,
+        selected_clients: Option<Vec<ClientType>>,
     ) -> Result<(), String> {
         let res: Result<(), String> = match self.state {
             State::Initialized => {
@@ -264,7 +329,7 @@ impl NetworkInitializer {
         };
         res.as_ref()?;
 
-        let (drones, clients, servers) = self.initialize_network(selected_drones);
+        let (drones, clients, servers) = self.initialize_network(selected_drones, selected_clients);
         let mut node_handlers: HashMap<NodeId, JoinHandle<()>> = HashMap::new();
 
         for (i, mut drone) in drones.into_iter().enumerate() {
