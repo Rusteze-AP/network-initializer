@@ -41,6 +41,9 @@ use rusty_drones::RustyDrone;
 use skylink::SkyLinkDrone;
 use wg_2024_rust::drone::RustDrone;
 
+type GenericDrone = Box<dyn Drone>;
+type GenericClient = Box<dyn ClientT>;
+
 const CLIENT_AUDIO_CONFIGURATIONS_NUM: usize = 1;
 const SERVER_CONFIGURATIONS_NUM: usize = 1;
 
@@ -170,7 +173,7 @@ impl NetworkInitializer {
         node_factories: Vec<(T, G)>,
     ) -> Vec<G> {
         // Filter factories based on the selected drones
-        let factories = if let Some(selected) = selected_nodes {
+        if let Some(selected) = selected_nodes {
             node_factories
                 .into_iter()
                 .filter(|(drone_type, _)| selected.contains(drone_type))
@@ -181,8 +184,7 @@ impl NetworkInitializer {
                 .into_iter()
                 .map(|(_, factory)| factory)
                 .collect() // Use all factories if no selection is provided
-        };
-        return factories;
+        }
     }
 
     /// Returns all the instances of the needed nodes
@@ -193,7 +195,7 @@ impl NetworkInitializer {
         &mut self,
         selected_drones: Option<Vec<DroneType>>,
         selected_clients: Option<Vec<ClientType>>,
-    ) -> (Vec<Box<dyn Drone>>, Vec<Box<dyn ClientT>>, Vec<Server>) {
+    ) -> (Vec<GenericDrone>, Vec<GenericClient>, Vec<Server>) {
         // Use the macro to generate factories mapped to DroneType
         let drone_factories: Vec<(DroneType, BoxDrone)> = create_drone_factories!(
             RustezeDrone,
@@ -354,15 +356,13 @@ impl NetworkInitializer {
                 "./initialization_files/client_video".to_string()
             } else {
                 let client_number = (i % CLIENT_AUDIO_CONFIGURATIONS_NUM) + 1; // Cycle through 1 to 5
-                format!(
-                    "./initialization_files/client_audio/client{}",
-                    client_number
-                )
+                format!("./initialization_files/client_audio/client{client_number}")
             };
 
             node_handlers.insert(
                 client_id,
                 thread::spawn(move || {
+                    client.with_all();
                     client.run(&init_file_path);
                 }),
             );
@@ -370,7 +370,7 @@ impl NetworkInitializer {
 
         for (i, mut server) in servers.into_iter().enumerate() {
             let server_number = (i % SERVER_CONFIGURATIONS_NUM) + 1; // Cycles through 1 to 5
-            let init_file_path = format!("./initialization_files/server/server{}", server_number);
+            let init_file_path = format!("./initialization_files/server/server{server_number}");
 
             node_handlers.insert(
                 server.get_id(),

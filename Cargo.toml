@@ -14,7 +14,8 @@ wg_internal = { git = "https://github.com/WGL-2024/WGL_repo_2024.git", features 
     "debug",
 ] }
 rusteze_drone = { git = "ssh://git@github.com/Rusteze-AP/drone.git", branch = "main" }
-client = { git = "ssh://git@github.com/Rusteze-AP/client.git", branch = "dev" }
+# client = { git = "ssh://git@github.com/Rusteze-AP/client.git", branch = "dev" }
+client = { path = "../client" }
 client-audio = { git = "ssh://git@github.com/Rusteze-AP/client-audio.git" }
 server = { git = "ssh://git@github.com/Rusteze-AP/server.git", branch = "main" }
 packet_forge = { git = "ssh://git@github.com/Rusteze-AP/packet-forge.git", branch = "main" }
