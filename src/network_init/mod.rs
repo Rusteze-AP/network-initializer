@@ -28,15 +28,15 @@ use wg_internal::drone::Drone;
 use wg_internal::network::NodeId;
 use wg_internal::packet::Packet;
 
-// use rusteze_drone::RustezeDrone;
+use rusteze_drone::RustezeDrone;
 
-use rustbusters_drone::RustBustersDrone;
-use dr_ones::Drone as DrOnes;
 use ap2024_unitn_cppenjoyers_drone::CppEnjoyersDrone;
+use dr_ones::Drone as DrOnes;
 use lockheedrustin_drone::LockheedRustin;
 use null_pointer_drone::MyDrone as NullPointerDrone;
 use rust_do_it::RustDoIt;
 use rust_roveri::RustRoveri;
+use rustbusters_drone::RustBustersDrone;
 use rusty_drones::RustyDrone;
 use skylink::SkyLinkDrone;
 use wg_2024_rust::drone::RustDrone;
@@ -49,7 +49,7 @@ const SERVER_CONFIGURATIONS_NUM: usize = 1;
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum DroneType {
-    // RustezeDrone,
+    RustezeDrone,
     DrOnes,
     RustBustersDrone,
     RustDrone,
@@ -57,7 +57,7 @@ pub enum DroneType {
     RustDoIt,
     LockheedRustin,
     CppEnjoyersDrone,
-    SkyLinkDrone,
+    // SkyLinkDrone,
     RustyDrone,
     NullPointerDrone,
 }
@@ -199,7 +199,7 @@ impl NetworkInitializer {
     ) -> (Vec<GenericDrone>, Vec<GenericClient>, Vec<Server>) {
         // Use the macro to generate factories mapped to DroneType
         let drone_factories: Vec<(DroneType, BoxDrone)> = create_drone_factories!(
-            // RustezeDrone,
+            RustezeDrone,
             DrOnes,
             RustBustersDrone,
             RustDrone,
@@ -207,7 +207,7 @@ impl NetworkInitializer {
             RustDoIt,
             LockheedRustin,
             CppEnjoyersDrone,
-            SkyLinkDrone,
+            // SkyLinkDrone,
             RustyDrone,
             NullPointerDrone
         );
@@ -344,7 +344,6 @@ impl NetworkInitializer {
                 }),
             );
         }
-        
 
         for (i, mut server) in servers.into_iter().enumerate() {
             let server_number = (i % SERVER_CONFIGURATIONS_NUM) + 1; // Cycles through 1 to 5
@@ -359,7 +358,7 @@ impl NetworkInitializer {
             );
         }
 
-        // // Set up Ctrl+C handler
+        // Set up Ctrl+C handler
         // let _command_senders = self.get_controller_senders();
         // ctrlc::set_handler(move || {
         //     println!("Received Ctrl+C, shutting down...");
@@ -386,5 +385,4 @@ impl NetworkInitializer {
 
         Ok(())
     }
-
 }

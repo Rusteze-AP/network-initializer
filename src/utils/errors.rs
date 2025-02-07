@@ -20,6 +20,12 @@ pub enum ConfigError {
 
     #[error("Empty topology")]
     EmptyTopology,
+
+    #[error("Client {0} with more than 2 connections")]
+    ClientWithMoreThanTwoConnections(NodeId),
+
+    #[error("Server {0} with less than 2 connections")]
+    ServerWithLessThanTwoConnections(NodeId),
 }
 
 #[derive(Debug, Error)]

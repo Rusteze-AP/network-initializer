@@ -1,6 +1,6 @@
 use super::errors::ConfigError;
 use crate::{
-    parsed_nodes::Node,
+    parsed_nodes::{Node, NodeType},
     types::parsed_nodes::{ParsedClient, ParsedDrone, ParsedServer},
 };
 use serde::Deserialize;
@@ -58,6 +58,16 @@ impl Parser {
     ) -> Result<(), ConfigError> {
         // Check that connections do not contain the node id nor are duplicated
         for node in nodes {
+            // Check that clients are connected to at most 2 drones
+            if node.node_type() == NodeType::Client && node.connected_drone_ids().len() > 2 {
+                return Err(ConfigError::ClientWithMoreThanTwoConnections(node.id()));
+            }
+
+            // Check that servers are connected to at least 2 drones
+            if node.node_type() == NodeType::Server && node.connected_drone_ids().len() < 2 {
+                return Err(ConfigError::ServerWithLessThanTwoConnections(node.id()));
+            }
+
             let mut connection_set = HashSet::new();
             for connection in node.connected_drone_ids() {
                 if *connection == node.id()

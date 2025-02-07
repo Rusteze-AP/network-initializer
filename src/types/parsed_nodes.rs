@@ -1,6 +1,13 @@
 use serde::Deserialize;
 use wg_internal::network::NodeId;
 
+#[derive(PartialEq)]
+pub enum NodeType {
+    Drone,
+    Client,
+    Server,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct ParsedDrone {
     pub id: NodeId,
@@ -58,6 +65,7 @@ impl Initializable for ParsedServer {
 pub trait Node {
     fn id(&self) -> NodeId;
     fn connected_drone_ids(&self) -> &Vec<NodeId>;
+    fn node_type(&self) -> NodeType;
 }
 
 impl Node for ParsedDrone {
@@ -67,6 +75,10 @@ impl Node for ParsedDrone {
 
     fn connected_drone_ids(&self) -> &Vec<NodeId> {
         &self.connected_drone_ids
+    }
+
+    fn node_type(&self) -> NodeType {
+        NodeType::Drone
     }
 }
 
@@ -78,6 +90,10 @@ impl Node for ParsedClient {
     fn connected_drone_ids(&self) -> &Vec<NodeId> {
         &self.connected_drone_ids
     }
+
+    fn node_type(&self) -> NodeType {
+        NodeType::Client
+    }
 }
 
 impl Node for ParsedServer {
@@ -87,5 +103,9 @@ impl Node for ParsedServer {
 
     fn connected_drone_ids(&self) -> &Vec<NodeId> {
         &self.connected_drone_ids
+    }
+
+    fn node_type(&self) -> NodeType {
+        NodeType::Server
     }
 }
