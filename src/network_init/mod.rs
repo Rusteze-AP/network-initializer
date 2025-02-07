@@ -8,7 +8,7 @@ use crate::parsed_nodes::ParsedServer;
 use crate::types;
 use crate::utils;
 
-use client::Client as ClientVideo;
+// use client::Client as ClientVideo;
 use client_audio::ClientAudio;
 use crossbeam::channel::{unbounded, Receiver, Sender};
 use net_utils::BoxClient;
@@ -227,24 +227,24 @@ impl NetworkInitializer {
                     },
                 ) as BoxClient,
             ), // TODO Add ClientAudio when implements correct ClientT
-            (
-                ClientType::Video,
-                Box::new(
-                    |client: &ParsedClient,
-                     command_send: Sender<DroneEvent>,
-                     command_recv: Receiver<DroneCommand>,
-                     senders: HashMap<u8, Sender<Packet>>,
-                     receiver: Receiver<Packet>| {
-                        Box::new(ClientVideo::new(
-                            client.id,
-                            command_send,
-                            command_recv,
-                            receiver,
-                            senders,
-                        )) as Box<dyn ClientT>
-                    },
-                ) as BoxClient,
-            ),
+            // (
+            //     ClientType::Video,
+            //     Box::new(
+            //         |client: &ParsedClient,
+            //          command_send: Sender<DroneEvent>,
+            //          command_recv: Receiver<DroneCommand>,
+            //          senders: HashMap<u8, Sender<Packet>>,
+            //          receiver: Receiver<Packet>| {
+            //             Box::new(ClientVideo::new(
+            //                 client.id,
+            //                 command_send,
+            //                 command_recv,
+            //                 receiver,
+            //                 senders,
+            //             )) as Box<dyn ClientT>
+            //         },
+            //     ) as BoxClient,
+            // ),
         ];
 
         // Filter factories based on the selected drones
@@ -345,24 +345,25 @@ impl NetworkInitializer {
             let client_id = client.get_id();
 
             // Determine the path based on the client type
-            let init_file_path = if client
-                .as_ref()
-                .as_any()
-                .downcast_ref::<ClientVideo>()
-                .is_some()
-            {
-                "./initialization_files/client_video".to_string()
-            } else {
+            // let init_file_path = if client
+            //     .as_ref()
+            //     .as_any()
+            //     .downcast_ref::<ClientVideo>()
+            //     .is_some()
+            // {
+            //     "./initialization_files/client_video".to_string()
+            // } else {
                 let client_number = (i % CLIENT_AUDIO_CONFIGURATIONS_NUM) + 1; // Cycle through 1 to 5
-                format!(
+                let init_file_path = format!(
                     "./initialization_files/client_audio/client{}",
                     client_number
-                )
-            };
+                );
+            // };
 
             node_handlers.insert(
                 client_id,
                 thread::spawn(move || {
+                    client.with_info();
                     client.run(&init_file_path);
                 }),
             );
@@ -375,24 +376,25 @@ impl NetworkInitializer {
             node_handlers.insert(
                 server.get_id(),
                 thread::spawn(move || {
+                    server.with_info();
                     server.run(&init_file_path);
                 }),
             );
         }
 
-        // Set up Ctrl+C handler
-        let _command_senders = self.get_controller_senders();
-        ctrlc::set_handler(move || {
-            println!("Received Ctrl+C, shutting down...");
-            std::process::exit(0);
+        // // Set up Ctrl+C handler
+        // let _command_senders = self.get_controller_senders();
+        // ctrlc::set_handler(move || {
+        //     println!("Received Ctrl+C, shutting down...");
+        //     std::process::exit(0);
 
-            // Send crash message to all nodes
-            // for (id, sender) in &command_senders {
-            //     sender.send(DroneCommand::Crash).unwrap();
-            //     println!("Sent crash command to node {}", id);
-            // }
-        })
-        .expect("Error setting Ctrl+C handler");
+        //     // Send crash message to all nodes
+        //     // for (id, sender) in &command_senders {
+        //     //     sender.send(DroneCommand::Crash).unwrap();
+        //     //     println!("Sent crash command to node {}", id);
+        //     // }
+        // })
+        // .expect("Error setting Ctrl+C handler");
 
         for (id, handler) in node_handlers.drain() {
             match handler.join() {
