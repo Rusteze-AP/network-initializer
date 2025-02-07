@@ -8,7 +8,7 @@ use crate::parsed_nodes::ParsedServer;
 use crate::types;
 use crate::utils;
 
-// use client::Client as ClientVideo;
+use client::Client as ClientVideo;
 use client_audio::ClientAudio;
 use crossbeam::channel::{unbounded, Receiver, Sender};
 use net_utils::BoxClient;
@@ -28,10 +28,10 @@ use wg_internal::drone::Drone;
 use wg_internal::network::NodeId;
 use wg_internal::packet::Packet;
 
-use rusteze_drone::RustezeDrone;
+// use rusteze_drone::RustezeDrone;
 
 use rustbusters_drone::RustBustersDrone;
-// use dr_ones::Drone as dr_ones_drone;
+use dr_ones::Drone as DrOnes;
 use ap2024_unitn_cppenjoyers_drone::CppEnjoyersDrone;
 use lockheedrustin_drone::LockheedRustin;
 use null_pointer_drone::MyDrone as NullPointerDrone;
@@ -49,7 +49,8 @@ const SERVER_CONFIGURATIONS_NUM: usize = 1;
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum DroneType {
-    RustezeDrone,
+    // RustezeDrone,
+    DrOnes,
     RustBustersDrone,
     RustDrone,
     RustRoveri,
@@ -198,7 +199,8 @@ impl NetworkInitializer {
     ) -> (Vec<GenericDrone>, Vec<GenericClient>, Vec<Server>) {
         // Use the macro to generate factories mapped to DroneType
         let drone_factories: Vec<(DroneType, BoxDrone)> = create_drone_factories!(
-            RustezeDrone,
+            // RustezeDrone,
+            DrOnes,
             RustBustersDrone,
             RustDrone,
             RustRoveri,
@@ -228,28 +230,7 @@ impl NetworkInitializer {
                         )) as Box<dyn ClientT>
                     },
                 ) as BoxClient,
-<<<<<<< HEAD
             ), // TODO Add ClientAudio when implements correct ClientT
-            // (
-            //     ClientType::Video,
-            //     Box::new(
-            //         |client: &ParsedClient,
-            //          command_send: Sender<DroneEvent>,
-            //          command_recv: Receiver<DroneCommand>,
-            //          senders: HashMap<u8, Sender<Packet>>,
-            //          receiver: Receiver<Packet>| {
-            //             Box::new(ClientVideo::new(
-            //                 client.id,
-            //                 command_send,
-            //                 command_recv,
-            //                 receiver,
-            //                 senders,
-            //             )) as Box<dyn ClientT>
-            //         },
-            //     ) as BoxClient,
-            // ),
-=======
-            ),
             (
                 ClientType::Video,
                 Box::new(
@@ -268,7 +249,6 @@ impl NetworkInitializer {
                     },
                 ) as BoxClient,
             ),
->>>>>>> 1d13e7ddc3caabddb7f5363f81b510f5819920e6
         ];
 
         // Filter factories based on the selected drones
@@ -344,38 +324,27 @@ impl NetworkInitializer {
             let client_id = client.get_id();
 
             // Determine the path based on the client type
-            // let init_file_path = if client
-            //     .as_ref()
-            //     .as_any()
-            //     .downcast_ref::<ClientVideo>()
-            //     .is_some()
-            // {
-            //     "./initialization_files/client_video".to_string()
-            // } else {
+            let init_file_path = if client
+                .as_ref()
+                .as_any()
+                .downcast_ref::<ClientVideo>()
+                .is_some()
+            {
+                "./initialization_files/client_video".to_string()
+            } else {
                 let client_number = (i % CLIENT_AUDIO_CONFIGURATIONS_NUM) + 1; // Cycle through 1 to 5
-<<<<<<< HEAD
-                let init_file_path = format!(
-                    "./initialization_files/client_audio/client{}",
-                    client_number
-                );
-            // };
-=======
                 format!("./initialization_files/client_audio/client{client_number}")
             };
->>>>>>> 1d13e7ddc3caabddb7f5363f81b510f5819920e6
 
             node_handlers.insert(
                 client_id,
                 thread::spawn(move || {
-<<<<<<< HEAD
-                    client.with_info();
-=======
-                    client.with_all();
->>>>>>> 1d13e7ddc3caabddb7f5363f81b510f5819920e6
+                    // client.with_all();
                     client.run(&init_file_path);
                 }),
             );
         }
+        
 
         for (i, mut server) in servers.into_iter().enumerate() {
             let server_number = (i % SERVER_CONFIGURATIONS_NUM) + 1; // Cycles through 1 to 5
@@ -418,7 +387,4 @@ impl NetworkInitializer {
         Ok(())
     }
 
-    pub fn stop_simulation(&mut self) {
-        todo!()
-    }
 }
