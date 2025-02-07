@@ -228,7 +228,7 @@ impl NetworkInitializer {
                         )) as Box<dyn ClientT>
                     },
                 ) as BoxClient,
-            ), // TODO Add ClientAudio when implements correct ClientT
+            ),
             (
                 ClientType::Video,
                 Box::new(
@@ -252,31 +252,6 @@ impl NetworkInitializer {
         // Filter factories based on the selected drones
         let filtered_drones = Self::filter_nodes(selected_drones, drone_factories);
         let filtered_clients = Self::filter_nodes(selected_clients, client_factories);
-        // let filtered_drones: Vec<BoxDrone> = if let Some(selected) = selected_drones {
-        //     drone_factories
-        //         .into_iter()
-        //         .filter(|(drone_type, _)| selected.contains(drone_type))
-        //         .map(|(_, factory)| factory)
-        //         .collect()
-        // } else {
-        //     drone_factories
-        //         .into_iter()
-        //         .map(|(_, factory)| factory)
-        //         .collect() // Use all factories if no selection is provided
-        // };
-
-        // let filtered_clients: Vec<BoxClient> = if let Some(selected) = selected_clients {
-        //     client_factories
-        //         .into_iter()
-        //         .filter(|(drone_type, _)| selected.contains(drone_type))
-        //         .map(|(_, factory)| factory)
-        //         .collect()
-        // } else {
-        //     client_factories
-        //         .into_iter()
-        //         .map(|(_, factory)| factory)
-        //         .collect() // Use all factories if no selection is provided
-        // };
 
         let initialized_drones = Self::initialize_entities(
             &self.parser.drones,
