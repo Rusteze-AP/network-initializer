@@ -13,8 +13,13 @@ ctrlc = "3.1.0"
 wg_internal = { git = "https://github.com/WGL-2024/WGL_repo_2024.git", features = [
     "debug",
 ] }
+<<<<<<< HEAD
 rusteze_drone = { git = "ssh://git@github.com/Rusteze-AP/drone.git", branch = "debug" }
 # client = { git = "ssh://git@github.com/Rusteze-AP/client.git", branch = "dev" }
+=======
+rusteze_drone = { git = "ssh://git@github.com/Rusteze-AP/drone.git", branch = "main" }
+client = { git = "ssh://git@github.com/Rusteze-AP/client.git", branch = "main" }
+>>>>>>> 1d13e7ddc3caabddb7f5363f81b510f5819920e6
 client-audio = { git = "ssh://git@github.com/Rusteze-AP/client-audio.git" }
 server = { git = "ssh://git@github.com/Rusteze-AP/server.git", branch = "main" }
 packet_forge = { git = "ssh://git@github.com/Rusteze-AP/packet-forge.git", branch = "main" }
