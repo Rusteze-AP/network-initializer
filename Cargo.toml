@@ -15,7 +15,7 @@ wg_internal = { git = "https://github.com/WGL-2024/WGL_repo_2024.git", features 
 
 client-video = { git = "ssh://git@github.com/Rusteze-AP/client-video.git", branch = "main" }
 client-audio = { git = "ssh://git@github.com/Rusteze-AP/client-audio.git", branch = "main" }
-server = { git = "ssh://git@github.com/Rusteze-AP/server.git", branch = "main" }
+server = { git = "ssh://git@github.com/Rusteze-AP/server.git", branch = "gui" }
 packet_forge = { git = "ssh://git@github.com/Rusteze-AP/packet-forge.git", branch = "main" }
 
 rusteze_drone = { git = "ssh://git@github.com/Rusteze-AP/drone.git", branch = "main" }
@@ -30,3 +30,7 @@ skylink = { git = "ssh://git@github.com/Suge42/Skylink_drone.git" }
 rusty_drones = { git = "ssh://git@github.com/rusty-drone-2024/rusty-drone", branch = "main" }
 null-pointer-drone = { git = "ssh://git@github.com/The-Null-Pointer-Patrol/null-pointer-drone.git" }
 rust-roveri = { git = "ssh://git@github.com/RustRoveri/rust-roveri.git" }
+ctrlc = { version = "3.4.5", optional = true }
+
+[features]
+use_ctrlc = ["ctrlc"]

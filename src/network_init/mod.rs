@@ -18,6 +18,7 @@ use packet_forge::ClientType;
 use server::Server;
 use std::collections::HashMap;
 use std::fmt::Debug;
+use std::process::Command;
 use std::thread::{self, JoinHandle};
 use types::channel::Channel;
 use types::parsed_nodes::Initializable;
@@ -27,6 +28,9 @@ use wg_internal::controller::{DroneCommand, DroneEvent};
 use wg_internal::drone::Drone;
 use wg_internal::network::NodeId;
 use wg_internal::packet::Packet;
+
+#[cfg(feature = "use_ctrlc")]
+use ctrlc;
 
 use rusteze_drone::RustezeDrone;
 
@@ -58,7 +62,7 @@ pub enum DroneType {
     RustDoIt,
     LockheedRustin,
     CppEnjoyersDrone,
-    // SkyLinkDrone,
+    SkyLinkDrone,
     RustyDrone,
     NullPointerDrone,
 }
@@ -208,7 +212,7 @@ impl NetworkInitializer {
             RustDoIt,
             LockheedRustin,
             CppEnjoyersDrone,
-            // SkyLinkDrone,
+            SkyLinkDrone,
             RustyDrone,
             NullPointerDrone
         );
@@ -231,7 +235,7 @@ impl NetworkInitializer {
                         )) as Box<dyn ClientT>
                     },
                 ) as BoxClient,
-            ), // TODO Add ClientAudio when implements correct ClientT
+            ),
             (
                 ClientType::Video,
                 Box::new(
@@ -284,6 +288,7 @@ impl NetworkInitializer {
             ],
         );
 
+        self.drone_command_map.clear();
         self.channel_map.clear();
         (initialized_drones, initialized_clients, initialized_servers)
     }
@@ -346,6 +351,20 @@ impl NetworkInitializer {
             );
         }
 
+        // let mut gui_process = Command::new("./server_gui")
+        //     .spawn()
+        //     .expect("Failed to start GUI");
+
+        let mut gui_process = Command::new("cargo")
+            .arg("run")
+            .arg("--bin")
+            .arg("server_gui") // This assumes you're running cargo from the `server` directory
+            .current_dir("../server") // Set the current working directory to `server` folder
+            .spawn()
+            .expect("Failed to start GUI");
+
+        println!("✅ GUI started with PID: {}", gui_process.id());
+
         for (i, mut server) in servers.into_iter().enumerate() {
             let server_number = (i % SERVER_CONFIGURATIONS_NUM) + 1; // Cycles through 1 to 5
             let init_file_path = format!("./initialization_files/server/server{server_number}");
@@ -353,24 +372,27 @@ impl NetworkInitializer {
             node_handlers.insert(
                 server.get_id(),
                 thread::spawn(move || {
+                    server.with_all();
                     server.run(&init_file_path);
                 }),
             );
         }
 
-        // Set up Ctrl+C handler
-        // let _command_senders = self.get_controller_senders();
-        // ctrlc::set_handler(move || {
-        //     println!("Received Ctrl+C, shutting down...");
-        //     std::process::exit(0);
+        #[cfg(feature = "use_ctrlc")]
+        {
+            let _command_senders = self.get_controller_senders();
+            ctrlc::set_handler(move || {
+                println!("Received Ctrl+C, shutting down...");
+                std::process::exit(0);
 
-        //     // Send crash message to all nodes
-        //     // for (id, sender) in &command_senders {
-        //     //     sender.send(DroneCommand::Crash).unwrap();
-        //     //     println!("Sent crash command to node {}", id);
-        //     // }
-        // })
-        // .expect("Error setting Ctrl+C handler");
+                // Send crash message to all nodes
+                // for (id, sender) in &command_senders {
+                //     sender.send(DroneCommand::Crash).unwrap();
+                //     println!("Sent crash command to node {}", id);
+                // }
+            })
+            .expect("Error setting Ctrl+C handler");
+        }
 
         for (id, handler) in node_handlers.drain() {
             match handler.join() {
@@ -382,6 +404,8 @@ impl NetworkInitializer {
                 }
             }
         }
+
+        gui_process.kill().expect("Failed to kill GUI");
 
         Ok(())
     }
