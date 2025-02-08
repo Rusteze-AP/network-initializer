@@ -46,7 +46,7 @@ type GenericClient = Box<dyn ClientT>;
 
 const CLIENT_AUDIO_CONFIGURATIONS_NUM: usize = 3;
 const CLIENT_VIDEO_CONFIGURATIONS_NUM: usize = 3;
-const SERVER_CONFIGURATIONS_NUM: usize = 1;
+const SERVER_CONFIGURATIONS_NUM: usize = 2;
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum DroneType {
@@ -284,7 +284,6 @@ impl NetworkInitializer {
             ],
         );
 
-        self.drone_command_map.clear();
         self.channel_map.clear();
         (initialized_drones, initialized_clients, initialized_servers)
     }
