@@ -44,7 +44,7 @@ use wg_2024_rust::drone::RustDrone;
 type GenericDrone = Box<dyn Drone>;
 type GenericClient = Box<dyn ClientT>;
 
-const CLIENT_AUDIO_CONFIGURATIONS_NUM: usize = 1;
+const CLIENT_AUDIO_CONFIGURATIONS_NUM: usize = 3;
 const CLIENT_VIDEO_CONFIGURATIONS_NUM: usize = 1;
 const SERVER_CONFIGURATIONS_NUM: usize = 1;
 

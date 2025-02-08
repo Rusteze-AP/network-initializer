@@ -1,0 +1,22 @@
+{
+  "songs": [
+    {
+      "id": 0,
+      "title": "Tokyo Cafe",
+      "artist": "TVARI",
+      "album": "pixabay",
+      "duration": 153,
+      "image_url": "https://cdn.pixabay.com/audio/2023/07/22/02-53-18-138_200x200.jpg",
+      "is_local": true
+    },
+    {
+      "id": 0,
+      "title": "Motivational Background",
+      "artist": "DayNigthMorning",
+      "album": "pixabay",
+      "duration": 90,
+      "image_url": "https://cdn.pixabay.com/audio/2024/12/07/13-01-36-664_200x200.png",
+      "is_local": true
+    }
+  ]
+}
