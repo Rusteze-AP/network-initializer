@@ -8,8 +8,8 @@ use crate::parsed_nodes::ParsedServer;
 use crate::types;
 use crate::utils;
 
-use client::Client as ClientVideo;
 use client_audio::ClientAudio;
+use client_video::ClientVideo;
 use crossbeam::channel::{unbounded, Receiver, Sender};
 use net_utils::BoxClient;
 use net_utils::BoxDrone;
@@ -45,6 +45,7 @@ type GenericDrone = Box<dyn Drone>;
 type GenericClient = Box<dyn ClientT>;
 
 const CLIENT_AUDIO_CONFIGURATIONS_NUM: usize = 1;
+const CLIENT_VIDEO_CONFIGURATIONS_NUM: usize = 1;
 const SERVER_CONFIGURATIONS_NUM: usize = 1;
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -330,7 +331,8 @@ impl NetworkInitializer {
                 .downcast_ref::<ClientVideo>()
                 .is_some()
             {
-                "./initialization_files/client_video".to_string()
+                let client_number = (i % CLIENT_VIDEO_CONFIGURATIONS_NUM) + 1; // Cycle through 1 to 5
+                format!("./initialization_files/client_video/client{client_number}")
             } else {
                 let client_number = (i % CLIENT_AUDIO_CONFIGURATIONS_NUM) + 1; // Cycle through 1 to 5
                 format!("./initialization_files/client_audio/client{client_number}")
@@ -339,7 +341,6 @@ impl NetworkInitializer {
             node_handlers.insert(
                 client_id,
                 thread::spawn(move || {
-                    // client.with_all();
                     client.run(&init_file_path);
                 }),
             );
@@ -352,7 +353,6 @@ impl NetworkInitializer {
             node_handlers.insert(
                 server.get_id(),
                 thread::spawn(move || {
-                    server.with_info();
                     server.run(&init_file_path);
                 }),
             );
