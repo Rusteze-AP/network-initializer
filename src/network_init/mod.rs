@@ -45,12 +45,12 @@ type GenericDrone = Box<dyn Drone>;
 type GenericClient = Box<dyn ClientT>;
 
 const CLIENT_AUDIO_CONFIGURATIONS_NUM: usize = 3;
-const CLIENT_VIDEO_CONFIGURATIONS_NUM: usize = 1;
+const CLIENT_VIDEO_CONFIGURATIONS_NUM: usize = 3;
 const SERVER_CONFIGURATIONS_NUM: usize = 1;
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum DroneType {
-    RustezeDrone,
+    // RustezeDrone,
     DrOnes,
     RustBustersDrone,
     RustDrone,
@@ -58,7 +58,7 @@ pub enum DroneType {
     RustDoIt,
     LockheedRustin,
     CppEnjoyersDrone,
-    // SkyLinkDrone,
+    SkyLinkDrone,
     RustyDrone,
     NullPointerDrone,
 }
@@ -200,7 +200,7 @@ impl NetworkInitializer {
     ) -> (Vec<GenericDrone>, Vec<GenericClient>, Vec<Server>) {
         // Use the macro to generate factories mapped to DroneType
         let drone_factories: Vec<(DroneType, BoxDrone)> = create_drone_factories!(
-            RustezeDrone,
+            // RustezeDrone,
             DrOnes,
             RustBustersDrone,
             RustDrone,
@@ -208,7 +208,7 @@ impl NetworkInitializer {
             RustDoIt,
             LockheedRustin,
             CppEnjoyersDrone,
-            // SkyLinkDrone,
+            SkyLinkDrone,
             RustyDrone,
             NullPointerDrone
         );
@@ -284,6 +284,7 @@ impl NetworkInitializer {
             ],
         );
 
+        self.drone_command_map.clear();
         self.channel_map.clear();
         (initialized_drones, initialized_clients, initialized_servers)
     }
