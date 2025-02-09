@@ -14,7 +14,8 @@ wg_internal = { git = "https://github.com/WGL-2024/WGL_repo_2024.git", features 
 ] }
 
 client-video = { git = "ssh://git@github.com/Rusteze-AP/client-video.git", branch = "main" }
-client-audio = { git = "ssh://git@github.com/Rusteze-AP/client-audio.git", branch = "main" }
+#client-audio = { git = "ssh://git@github.com/Rusteze-AP/client-audio.git", branch = "main" }
+client-audio = { path = "../client-audio" }
 server = { git = "ssh://git@github.com/Rusteze-AP/server.git", branch = "main" }
 packet_forge = { git = "ssh://git@github.com/Rusteze-AP/packet-forge.git", branch = "main" }
 

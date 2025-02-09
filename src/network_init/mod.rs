@@ -231,7 +231,7 @@ impl NetworkInitializer {
                         )) as Box<dyn ClientT>
                     },
                 ) as BoxClient,
-            ), // TODO Add ClientAudio when implements correct ClientT
+            ),
             (
                 ClientType::Video,
                 Box::new(
@@ -342,6 +342,8 @@ impl NetworkInitializer {
             node_handlers.insert(
                 client_id,
                 thread::spawn(move || {
+                    client.with_info();
+                    client.with_error();
                     client.run(&init_file_path);
                 }),
             );
@@ -354,6 +356,8 @@ impl NetworkInitializer {
             node_handlers.insert(
                 server.get_id(),
                 thread::spawn(move || {
+                    server.with_info();
+                    server.with_error();
                     server.run(&init_file_path);
                 }),
             );
