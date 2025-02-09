@@ -106,6 +106,18 @@ impl Parser {
             return Err(ConfigError::DuplicatedNodeId);
         }
 
+        // Check that clients are not connected to servers
+        for client in &self.clients {
+            for server in &self.servers {
+                if client.connected_drone_ids().contains(&server.id()) {
+                    return Err(ConfigError::ClientConnectedToServer(
+                        client.id(),
+                        server.id(),
+                    ));
+                }
+            }
+        }
+
         // Convert nodes to a lookup map for bidirectional checks
         let node_map: HashMap<NodeId, &dyn Node> = self
             .drones

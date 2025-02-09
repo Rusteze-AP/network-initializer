@@ -26,6 +26,9 @@ pub enum ConfigError {
 
     #[error("Server {0} with less than 2 connections")]
     ServerWithLessThanTwoConnections(NodeId),
+
+    #[error("Client {0} connected to server {1}")]
+    ClientConnectedToServer(NodeId, NodeId),
 }
 
 #[derive(Debug, Error)]
