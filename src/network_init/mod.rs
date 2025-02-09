@@ -11,6 +11,8 @@ use crate::utils;
 use client_audio::ClientAudio;
 use client_video::ClientVideo;
 use crossbeam::channel::{unbounded, Receiver, Sender};
+#[cfg(feature = "use_ctrlc")]
+use ctrlc;
 use net_utils::BoxClient;
 use net_utils::BoxDrone;
 use packet_forge::ClientT;
@@ -362,19 +364,16 @@ impl NetworkInitializer {
             );
         }
 
-        // Set up Ctrl+C handler
-        // let _command_senders = self.get_controller_senders();
-        // ctrlc::set_handler(move || {
-        //     println!("Received Ctrl+C, shutting down...");
-        //     std::process::exit(0);
-
-        //     // Send crash message to all nodes
-        //     // for (id, sender) in &command_senders {
-        //     //     sender.send(DroneCommand::Crash).unwrap();
-        //     //     println!("Sent crash command to node {}", id);
-        //     // }
-        // })
-        // .expect("Error setting Ctrl+C handler");
+        #[cfg(feature = "use_ctrlc")]
+        {
+            // Set up Ctrl+C handler
+            let _command_senders = self.get_controller_senders();
+            ctrlc::set_handler(move || {
+                println!("Received Ctrl+C, shutting down...");
+                std::process::exit(0);
+            })
+            .expect("Error setting Ctrl+C handler");
+        }
 
         for (id, handler) in node_handlers.drain() {
             match handler.join() {
