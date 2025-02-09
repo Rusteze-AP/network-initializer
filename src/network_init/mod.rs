@@ -30,6 +30,7 @@ use wg_internal::drone::Drone;
 use wg_internal::network::NodeId;
 use wg_internal::packet::Packet;
 
+#[cfg(feature = "use_rusteze_drone")]
 use rusteze_drone::RustezeDrone;
 
 use ap2024_unitn_cppenjoyers_drone::CppEnjoyersDrone;
@@ -52,7 +53,7 @@ const SERVER_CONFIGURATIONS_NUM: usize = 2;
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum DroneType {
-    // RustezeDrone,
+    RustezeDrone,
     DrOnes,
     RustBustersDrone,
     RustDrone,
@@ -201,8 +202,14 @@ impl NetworkInitializer {
         selected_clients: Option<Vec<ClientType>>,
     ) -> (Vec<GenericDrone>, Vec<GenericClient>, Vec<Server>) {
         // Use the macro to generate factories mapped to DroneType
-        let drone_factories: Vec<(DroneType, BoxDrone)> = create_drone_factories!(
-            // RustezeDrone,
+        let mut drone_factories: Vec<(DroneType, BoxDrone)> = Vec::new();
+
+        #[cfg(feature = "use_rusteze_drone")]
+        {
+            drone_factories.extend(create_drone_factories!(RustezeDrone));
+        }
+
+        drone_factories.extend(create_drone_factories!(
             DrOnes,
             RustBustersDrone,
             RustDrone,
@@ -213,7 +220,7 @@ impl NetworkInitializer {
             SkyLinkDrone,
             RustyDrone,
             NullPointerDrone
-        );
+        ));
 
         let client_factories: Vec<(ClientType, BoxClient)> = vec![
             (
